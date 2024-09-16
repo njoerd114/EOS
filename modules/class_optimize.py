@@ -3,14 +3,14 @@ import numpy as np
 from  modules.class_load import *
 from  modules.class_ems import *
 from  modules.class_pv_forecast import *
-from modules.class_akku import *
+from modules.class_battery import *
 
 from modules.class_heatpump import * 
 from modules.class_load_container import * 
 from modules.class_inverter import * 
-from modules.class_sommerzeit import *
-from modules.visualize import *
-from modules.class_haushaltsgeraet import *
+from modules.class_summertime import *
+from modules.render import *
+from modules.class_household_appliance import *
 import os
 from flask import Flask, send_from_directory
 from pprint import pprint
@@ -79,30 +79,30 @@ def differential_evolution(population, toolbox, cxpb, mutpb, ngen, stats=None, h
 
 
 class optimization_problem:
-    def __init__(self, prediction_hours=24, strafe = 10, optimization_hours= 24):
+    def __init__(self, prediction_hours=24, penalty = 10, optimization_hours= 24):
         self.prediction_hours = prediction_hours#
-        self.strafe = strafe
+        self.penalty = penalty
         self.opti_param = None
-        self.fixed_eauto_hours = prediction_hours-optimization_hours
-        self.possible_charge_values = moegliche_ladestroeme_in_prozent
+        self.fixed_bev_hours = prediction_hours-optimization_hours
+        self.possible_charge_values = possible_charging_currents_percentage
 
 
     def split_individual(self, individual):
         """
         Teilt das gegebene Individuum in die verschiedenen Parameter auf: 
         - Entladeparameter (discharge_hours_bin)
-        - Ladeparameter (eautocharge_hours_float)
+        - Ladeparameter (bevcharge_hours_float)
         - Haushaltsgeräte (spuelstart_int, falls vorhanden)
         """
         # Extrahiere die Entlade- und Ladeparameter direkt aus dem Individuum
         discharge_hours_bin = individual[:self.prediction_hours]  # Erste 24 Werte sind Bool (Entladen)
-        eautocharge_hours_float = individual[self.prediction_hours:self.prediction_hours * 2]  # Nächste 24 Werte sind Float (Laden)
+        bevcharge_hours_float = individual[self.prediction_hours:self.prediction_hours * 2]  # Nächste 24 Werte sind Float (Laden)
 
         spuelstart_int = None
-        if self.opti_param and self.opti_param.get("haushaltsgeraete", 0) > 0:
+        if self.opti_param and self.opti_param.get("household_appliances", 0) > 0:
             spuelstart_int = individual[-1]  # Letzter Wert ist Startzeit für Haushaltsgerät
 
-        return discharge_hours_bin, eautocharge_hours_float, spuelstart_int
+        return discharge_hours_bin, bevcharge_hours_float, spuelstart_int
 
 
     def setup_deap_environment(self,opti_param, start_hour):
@@ -120,7 +120,7 @@ class optimization_problem:
         # PARAMETER
         self.toolbox = base.Toolbox()
         self.toolbox.register("attr_bool", random.randint, 0, 1)
-        self.toolbox.register("attr_float", random.uniform, 0, 1)  # Für kontinuierliche Werte zwischen 0 und 1 (z.B. für E-Auto-Ladeleistung)
+        self.toolbox.register("attr_float", random.uniform, 0, 1)  # Für kontinuierliche Werte zwischen 0 und 1 (z.B. für E-Auto-charging_power)
         #self.toolbox.register("attr_choice", random.choice, self.possible_charge_values)  # Für diskrete Ladeströme
 
         self.toolbox.register("attr_int", random.randint, start_hour, 23)
@@ -128,9 +128,9 @@ class optimization_problem:
         
         
         ###################
-        # Haushaltsgeraete
-        #print("Haushalt:",opti_param["haushaltsgeraete"])
-        if opti_param["haushaltsgeraete"]>0:   
+        # household_appliances
+        #print("Haushalt:",opti_param["household_appliances"])
+        if opti_param["household_appliances"]>0:   
                 def create_individual():
                         attrs = [self.toolbox.attr_bool() for _ in range(self.prediction_hours)]  # 24 Bool-Werte für Entladen
                         attrs += [self.toolbox.attr_float()  for _ in range(self.prediction_hours)]  # 24 Float-Werte für Laden
@@ -162,27 +162,27 @@ class optimization_problem:
         
         #print("Spuel:",self.opti_param)
 
-        discharge_hours_bin, eautocharge_hours_float, spuelstart_int = self.split_individual(individual)        
+        discharge_hours_bin, bevcharge_hours_float, spuelstart_int = self.split_individual(individual)        
 
-        # Haushaltsgeraete
-        if self.opti_param["haushaltsgeraete"]>0:   
-                ems.set_haushaltsgeraet_start(spuelstart_int,global_start_hour=start_hour)
+        # household_appliances
+        if self.opti_param["household_appliances"]>0:   
+                ems.set_household_appliance_start(spuelstart_int,global_start_hour=start_hour)
 
 
 
         #discharge_hours_bin = np.full(self.prediction_hours,0)
-        ems.set_akku_discharge_hours(discharge_hours_bin)
+        ems.set_battery_discharge_hours(discharge_hours_bin)
         
-        # Setze die festen Werte für die letzten x Stunden
-        for i in range(self.prediction_hours - self.fixed_eauto_hours, self.prediction_hours):
-            eautocharge_hours_float[i] = 0.0  # Setze die letzten x Stunden auf einen festen Wert (oder vorgegebenen Wert)
+        # Setze die festen Werte für die letzten x hours
+        for i in range(self.prediction_hours - self.fixed_bev_hours, self.prediction_hours):
+            bevcharge_hours_float[i] = 0.0  # Setze die letzten x hours auf einen festen Wert (oder vorgegebenen Wert)
 
-        #print(eautocharge_hours_float)
+        #print(bevcharge_hours_float)
         
-        ems.set_eauto_charge_hours(eautocharge_hours_float)
+        ems.set_bev_charge_hours(bevcharge_hours_float)
         
         
-        o = ems.simuliere(start_hour)
+        o = ems.simulate(start_hour)
 
         return o
 
@@ -194,62 +194,62 @@ class optimization_problem:
         except: 
                 return (100000.0,)
                 
-        gesamtbilanz = o["Gesamtbilanz_Euro"]
+        overall_balance = o["overall_balance_Euro"]
         if worst_case:
-                gesamtbilanz = gesamtbilanz * -1.0
+                overall_balance = overall_balance * -1.0
         
-        discharge_hours_bin, eautocharge_hours_float, spuelstart_int = self.split_individual(individual)     
-        max_ladeleistung = np.max(moegliche_ladestroeme_in_prozent)
+        discharge_hours_bin, bevcharge_hours_float, spuelstart_int = self.split_individual(individual)     
+        max_charging_power = np.max(possible_charging_currents_percentage)
 
-        strafe_überschreitung = 0.0
+        penalty_überschreitung = 0.0
 
-        # Ladeleistung überschritten?
-        for ladeleistung in eautocharge_hours_float:
-                if ladeleistung > max_ladeleistung:
+        # charging_power überschritten?
+        for charging_power in bevcharge_hours_float:
+                if charging_power > max_charging_power:
                     # Berechne die Überschreitung
-                    überschreitung = ladeleistung - max_ladeleistung
-                    # Füge eine Strafe hinzu (z.B. 10 Einheiten Strafe pro Prozentpunkt Überschreitung)
-                    strafe_überschreitung += self.strafe * 10  # Hier ist die Strafe proportional zur Überschreitung
+                    überschreitung = charging_power - max_charging_power
+                    # Füge eine penalty hinzu (z.B. 10 Einheiten penalty pro Prozentpunkt Überschreitung)
+                    penalty_überschreitung += self.penalty * 10  # Hier ist die penalty proportional zur Überschreitung
 
         
-        # Für jeden Discharge 0, eine kleine Strafe von 1 Cent, da die Lastvertelung noch fehlt. Also wenn es egal ist, soll er den Akku entladen lassen
+        # Für jeden Discharge 0, eine kleine penalty von 1 Cent, da die loadvertelung noch fehlt. Also wenn es egal ist, soll er den battery entladen lassen
         for i in range(0, self.prediction_hours):
-            if discharge_hours_bin[i] == 0.0:  # Wenn die letzten x Stunden von einem festen Wert abweichen
-                gesamtbilanz += 0.01  # Bestrafe den Optimierer
+            if discharge_hours_bin[i] == 0.0:  # Wenn die letzten x hours von einem festen Wert abweichen
+                overall_balance += 0.01  # Bepenalty den Optimierer
                 
         
-        # E-Auto nur die ersten self.fixed_eauto_hours 
-        for i in range(self.prediction_hours - self.fixed_eauto_hours, self.prediction_hours):
-            if eautocharge_hours_float[i] != 0.0:  # Wenn die letzten x Stunden von einem festen Wert abweichen
-                gesamtbilanz += self.strafe  # Bestrafe den Optimierer
+        # E-Auto nur die ersten self.fixed_bev_hours 
+        for i in range(self.prediction_hours - self.fixed_bev_hours, self.prediction_hours):
+            if bevcharge_hours_float[i] != 0.0:  # Wenn die letzten x hours von einem festen Wert abweichen
+                overall_balance += self.penalty  # Bepenalty den Optimierer
         
         
         # Überprüfung, ob der Mindest-SoC erreicht wird
-        final_soc = ems.eauto.ladezustand_in_prozent()  # Nimmt den SoC am Ende des Optimierungszeitraums
+        final_soc = ems.bev.charge_level_percentage()  # Nimmt den SoC am Ende des optimizationszeitraums
         
-        if (parameter['eauto_min_soc']-ems.eauto.ladezustand_in_prozent()) <= 0.0:
-                #print (parameter['eauto_min_soc']," " ,ems.eauto.ladezustand_in_prozent()," ",(parameter['eauto_min_soc']-ems.eauto.ladezustand_in_prozent()))
+        if (parameter['bev_min_soc']-ems.bev.charge_level_percentage()) <= 0.0:
+                #print (parameter['bev_min_soc']," " ,ems.bev.charge_level_percentage()," ",(parameter['bev_min_soc']-ems.bev.charge_level_percentage()))
                 for i in range(0, self.prediction_hours):
-                    if eautocharge_hours_float[i] != 0.0:  # Wenn die letzten x Stunden von einem festen Wert abweichen
-                        gesamtbilanz += self.strafe  # Bestrafe den Optimierer
+                    if bevcharge_hours_float[i] != 0.0:  # Wenn die letzten x hours von einem festen Wert abweichen
+                        overall_balance += self.penalty  # Bepenalty den Optimierer
 
         
-        eauto_roi =  (parameter['eauto_min_soc']-ems.eauto.ladezustand_in_prozent())
-        individual.extra_data = (o["Gesamtbilanz_Euro"],o["Gesamt_Verluste"], eauto_roi )
+        bev_roi =  (parameter['bev_min_soc']-ems.bev.charge_level_percentage())
+        individual.extra_data = (o["overall_balance_Euro"],o["Gesamt_losses"], bev_roi )
         
         
-        restenergie_akku = ems.akku.aktueller_energieinhalt()
-        restwert_akku = restenergie_akku*parameter["preis_euro_pro_wh_akku"]
-        # print(restenergie_akku)
-        # print(parameter["preis_euro_pro_wh_akku"])
-        # print(restwert_akku)
+        restenergie_battery = ems.battery.current_energy_content()
+        restwert_battery = restenergie_battery*parameter["preis_euro_pro_wh_battery"]
+        # print(restenergie_battery)
+        # print(parameter["preis_euro_pro_wh_battery"])
+        # print(restwert_battery)
         # print()
-        strafe = 0.0
-        strafe = max(0,(parameter['eauto_min_soc']-ems.eauto.ladezustand_in_prozent()) * self.strafe ) 
-        gesamtbilanz += strafe    - restwert_akku + strafe_überschreitung
-        #gesamtbilanz += o["Gesamt_Verluste"]/10000.0
+        penalty = 0.0
+        penalty = max(0,(parameter['bev_min_soc']-ems.bev.charge_level_percentage()) * self.penalty ) 
+        overall_balance += penalty - restwert_battery + penalty_überschreitung
+        #overall_balance += o["Gesamt_losses"]/10000.0
                 
-        return (gesamtbilanz,)
+        return (overall_balance,)
 
 
 
@@ -283,19 +283,19 @@ class optimization_problem:
         
 
         
-        member = {"bilanz":[],"verluste":[],"nebenbedingung":[]}
+        member = {"balance":[],"losses":[],"side_condition":[]}
         for ind in population:
                 if hasattr(ind, 'extra_data'):
                         extra_value1, extra_value2,extra_value3 = ind.extra_data
-                        member["bilanz"].append(extra_value1)
-                        member["verluste"].append(extra_value2)
-                        member["nebenbedingung"].append(extra_value3)
+                        member["balance"].append(extra_value1)
+                        member["losses"].append(extra_value2)
+                        member["side_condition"].append(extra_value3)
         
         
         return hof[0], member
 
 
-    def optimierung_ems(self,parameter=None, start_hour=None,worst_case=False, startdate=None):
+    def optimization_ems(self,parameter=None, start_hour=None,worst_case=False, startdate=None):
 
         
         ############
@@ -309,29 +309,29 @@ class optimization_problem:
                 date_now = startdate.strftime("%Y-%m-%d")
         #print("Start_date:",date_now)
         
-        akku_size = parameter['pv_akku_cap'] # Wh
+        battery_size = parameter['pv_battery_cap'] # Wh
        
-        einspeiseverguetung_euro_pro_wh = np.full(self.prediction_hours, parameter["einspeiseverguetung_euro_pro_wh"])  #=  # € / Wh 7/(1000.0*100.0)
+        feed_in_tariff_euro_per_wh = np.full(self.prediction_hours, parameter["feed_in_tariff_euro_per_wh"])  #=  # € / Wh 7/(1000.0*100.0)
         discharge_array = np.full(self.prediction_hours,1) #np.array([1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0])   # 
-        akku = PVAkku(kapazitaet_wh=akku_size,hours=self.prediction_hours,start_soc_prozent=parameter["pv_soc"], max_ladeleistung_w=5000)
-        akku.set_charge_per_hour(discharge_array)
+        battery = PVbattery(capacity_wh=battery_size,hours=self.prediction_hours,initial_soc_percentage=parameter["pv_soc"], max_charging_power_w=5000)
+        battery.set_charge_per_hour(discharge_array)
         
         
-        laden_moeglich = np.full(self.prediction_hours,1) # np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0])
-        eauto = PVAkku(kapazitaet_wh=parameter["eauto_cap"], hours=self.prediction_hours, lade_effizienz=parameter["eauto_charge_efficiency"], entlade_effizienz=1.0, max_ladeleistung_w=parameter["eauto_charge_power"] ,start_soc_prozent=parameter["eauto_soc"])
-        eauto.set_charge_per_hour(laden_moeglich)
-        min_soc_eauto = parameter['eauto_min_soc']
+        charging_possible = np.full(self.prediction_hours,1) # np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0])
+        bev = PVbattery(capacity_wh=parameter["bev_cap"], hours=self.prediction_hours, charging_efficiency=parameter["bev_charge_efficiency"], discharging_efficiency=1.0, max_charging_power_w=parameter["bev_charge_power"] ,initial_soc_percentage=parameter["bev_soc"])
+        bev.set_charge_per_hour(charging_possible)
+        min_soc_bev = parameter['bev_min_soc']
         start_params = parameter['start_solution']
         
         ###############
-        # spuelmaschine
+        # dishwasher
         ##############
         print(parameter)
-        if parameter["haushaltsgeraet_dauer"] >0:
-                spuelmaschine = Haushaltsgeraet(hours=self.prediction_hours, verbrauch_kwh=parameter["haushaltsgeraet_wh"], dauer_h=parameter["haushaltsgeraet_dauer"])
-                spuelmaschine.set_startzeitpunkt(start_hour)  # Startet jetzt
+        if parameter["household_appliance_duration"] >0:
+                dishwasher = household_appliance(hours=self.prediction_hours, consumption_kwh=parameter["household_appliance_wh"], duration_h=parameter["household_appliance_duration"])
+                dishwasher.set_start_time(start_hour)  # Startet jetzt
         else: 
-                spuelmaschine = None
+                dishwasher = None
 
 
 
@@ -351,29 +351,31 @@ class optimization_problem:
             # PVforecast.update_ac_power_measurement(date_time=datetime.now(), ac_power_measurement=float(parameter['pvpowernow']))
             # #PVforecast.print_ac_power_and_measurement()
         pv_forecast = parameter['pv_forecast'] #PVforecast.get_pv_forecast_for_date_range(date_now,date) #get_forecast_for_date(date)
-        temperature_forecast = parameter['temperature_forecast'] #PVforecast.get_temperature_for_date_range(date_now,date)
+        temperaturee_forecast = parameter['temperaturee_forecast'] #PVforecast.get_temperaturee_for_date_range(date_now,date)
 
 
         ###############
-        # Strompreise   
+        # electricity_prices   
         ###############
-        specific_date_prices = parameter["strompreis_euro_pro_wh"]
+        specific_date_prices = parameter["electricity_price_euro_per_wh"]
         print(specific_date_prices)
-        #print("https://api.akkudoktor.net/prices?start="+date_now+"&end="+date)
+        #print("https://api.batterydoktor.net/prices?start="+date_now+"&end="+date)
 
 
-        wr = Wechselrichter(10000, akku)
+        wr = inverter(10000, battery)
 
-        ems = EnergieManagementSystem(gesamtlast = parameter["gesamtlast"], pv_prognose_wh=pv_forecast, strompreis_euro_pro_wh=specific_date_prices, einspeiseverguetung_euro_pro_wh=einspeiseverguetung_euro_pro_wh, eauto=eauto, haushaltsgeraet=spuelmaschine,wechselrichter=wr)
-        o = ems.simuliere(start_hour)
+        ems = EnergieManagementSystem(total_load = parameter["total_load"], pv_forecast_wh=pv_forecast, electricity_price_euro_per_wh=specific_date_prices, feed_in_tariff_euro_per_wh
+=feed_in_tariff_euro_per_wh
+, bev=bev, household_appliance=dishwasher,inverter=wr)
+        o = ems.simulate(start_hour)
     
         ###############
         # Optimizer Init
         ##############
         opti_param = {}
-        opti_param["haushaltsgeraete"] = 0
-        if spuelmaschine != None:
-                opti_param["haushaltsgeraete"] = 1
+        opti_param["household_appliances"] = 0
+        if dishwasher != None:
+                opti_param["household_appliances"] = 1
                 
         self.setup_deap_environment(opti_param, start_hour)
 
@@ -384,32 +386,33 @@ class optimization_problem:
         start_solution, extra_data = self.optimize(start_params)
         best_solution = start_solution
         o = self.evaluate_inner(best_solution, ems,start_hour)
-        eauto = ems.eauto.to_dict()
+        bev = ems.bev.to_dict()
         spuelstart_int = None
-        discharge_hours_bin, eautocharge_hours_float, spuelstart_int = self.split_individual(best_solution)     
+        discharge_hours_bin, bevcharge_hours_float, spuelstart_int = self.split_individual(best_solution)     
         
      
         print(parameter)
         print(best_solution)
-        visualisiere_ergebnisse(parameter["gesamtlast"], pv_forecast, specific_date_prices, o,discharge_hours_bin,eautocharge_hours_float , temperature_forecast, start_hour, self.prediction_hours,einspeiseverguetung_euro_pro_wh,extra_data=extra_data)
-        os.system("cp visualisierungsergebnisse.pdf ~/")
+        render_results(parameter["total_load"], pv_forecast, specific_date_prices, o,discharge_hours_bin,bevcharge_hours_float , temperaturee_forecast, start_hour, self.prediction_hours,feed_in_tariff_euro_per_wh
+,extra_data=extra_data)
+        os.system("cp rendered_results.pdf ~/")
         
-           # 'Eigenverbrauch_Wh_pro_Stunde': eigenverbrauch_wh_pro_stunde,
-            # 'Netzeinspeisung_Wh_pro_Stunde': netzeinspeisung_wh_pro_stunde,
-            # 'Netzbezug_Wh_pro_Stunde': netzbezug_wh_pro_stunde,
-            # 'Kosten_Euro_pro_Stunde': kosten_euro_pro_stunde,
-            # 'akku_soc_pro_stunde': akku_soc_pro_stunde,
-            # 'Einnahmen_Euro_pro_Stunde': einnahmen_euro_pro_stunde,
-            # 'Gesamtbilanz_Euro': gesamtkosten_euro,
-            # 'E-Auto_SoC_pro_Stunde':eauto_soc_pro_stunde,
-            # 'Gesamteinnahmen_Euro': sum(einnahmen_euro_pro_stunde),
-            # 'Gesamtkosten_Euro': sum(kosten_euro_pro_stunde),
-            # "Verluste_Pro_Stunde":verluste_wh_pro_stunde,
-            # "Gesamt_Verluste":sum(verluste_wh_pro_stunde),
-            # "Haushaltsgeraet_wh_pro_stunde":haushaltsgeraet_wh_pro_stunde        
+           # 'own_consumption_Wh_per_hour': own_consumption_wh_per_hour,
+            # 'feed_in_wh_per_hour': feed_in_wh_per_hour,
+            # 'grid_consumption_wh_per_hour': grid_consumption_wh_per_hour,
+            # 'cost_euro_per_hour': cost_euro_per_hour,
+            # 'battery_soc_per_hour': battery_soc_per_hour,
+            # 'earnings_euro_per_hour': earnings_euro_per_hour,
+            # 'overall_balance_Euro': gesamtkosten_euro,
+            # 'E-Auto_SoC_per_hour':bev_soc_per_hour,
+            # 'Gesamteinnahmen_Euro': sum(earnings_euro_per_hour),
+            # 'Gesamtkosten_Euro': sum(cost_euro_per_hour),
+            # "losses_per_hour":losses_wh_per_hour,
+            # "Gesamt_losses":sum(losses_wh_per_hour),
+            # "household_appliance_wh_per_hour":household_appliance_wh_per_hour        
         
-        #print(eauto)
-        return {"discharge_hours_bin":discharge_hours_bin, "eautocharge_hours_float":eautocharge_hours_float ,"result":o ,"eauto_obj":eauto,"start_solution":best_solution,"spuelstart":spuelstart_int,"simulation_data":o}
+        #print(bev)
+        return {"discharge_hours_bin":discharge_hours_bin, "bevcharge_hours_float":bevcharge_hours_float ,"result":o ,"bev_obj":bev,"start_solution":best_solution,"spuelstart":spuelstart_int,"simulation_data":o}
 
 
 

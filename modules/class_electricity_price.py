@@ -70,8 +70,8 @@ class HourlyElectricityPriceForecast:
             return True
         with open(self.cache_time_file, 'r') as file:
             timestamp_str = file.read()
-            last_cache_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-        return datetime.now() - last_cache_time > timedelta(hours=1)
+            load_cache_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+        return datetime.now() - load_cache_time > timedelta(hours=1)
     
     def update_cache_timestamp(self):
         with open(self.cache_time_file, 'w') as file:
@@ -91,7 +91,7 @@ class HourlyElectricityPriceForecast:
         previous_day_str = previous_day.strftime('%Y-%m-%d')
         
         # Extrahieren des Preises von 0:00 des vorherigen Tages
-        last_price_of_previous_day = [entry["marketpriceEurocentPerKWh"]+self.abgaben for entry in self.prices if previous_day_str in entry['end']][-1]
+        load_price_of_previous_day = [entry["marketpriceEurocentPerKWh"]+self.abgaben for entry in self.prices if previous_day_str in entry['end']][-1]
         
         # Extrahieren aller Preise für das spezifizierte Datum
         date_prices = [entry["marketpriceEurocentPerKWh"]+self.abgaben for entry in self.prices if date_str in entry['end']]
@@ -99,7 +99,7 @@ class HourlyElectricityPriceForecast:
         
         # Hinzufügen des letzten Preises des vorherigen Tages am Anfang der Liste
         if len(date_prices) == 23:
-                date_prices.insert(0, last_price_of_previous_day)
+                date_prices.insert(0, load_price_of_previous_day)
 
         return np.array(date_prices)/(1000.0*100.0) + self.abgaben
     

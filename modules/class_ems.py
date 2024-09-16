@@ -1,5 +1,4 @@
 from datetime import datetime
-from pprint import pprint
 import numpy as np
 
 def replace_nan_with_none(data):
@@ -14,135 +13,137 @@ def replace_nan_with_none(data):
 
 
 
-class EnergieManagementSystem:
-    def __init__(self,  pv_prognose_wh=None, strompreis_euro_pro_wh=None, einspeiseverguetung_euro_pro_wh=None, eauto=None, gesamtlast=None, haushaltsgeraet=None, wechselrichter=None):
-        self.akku = wechselrichter.akku
-        #self.lastkurve_wh = lastkurve_wh
-        self.gesamtlast = gesamtlast
-        self.pv_prognose_wh = pv_prognose_wh
-        self.strompreis_euro_pro_wh = strompreis_euro_pro_wh  # Strompreis in Cent pro Wh
-        self.einspeiseverguetung_euro_pro_wh = einspeiseverguetung_euro_pro_wh  # Einspeisevergütung in Cent pro Wh
-        self.eauto = eauto
-        self.haushaltsgeraet = haushaltsgeraet
-        self.wechselrichter = wechselrichter
+class EneryManagementSystem:
+    def __init__(self,  pv_forecast_wh=None, electricity_price_euro_per_wh=None, feed_in_tariff_euro_per_wh
+=None, bev=None, total_load=None, household_appliance=None, inverter=None):
+        self.battery = inverter.battery
+        #self.load_curve_wh = load_curve_wh
+        self.total_load = total_load
+        self.pv_forecast_wh = pv_forecast_wh
+        self.electricity_price_euro_per_wh = electricity_price_euro_per_wh  # electricity_price in Cent pro Wh
+        self.feed_in_tariff_euro_per_wh = feed_in_tariff_euro_per_wh
+  # Einspeisevergütung in Cent pro Wh
+        self.bev = bev
+        self.household_appliance = household_appliance
+        self.inverter = inverter
         
         
     
-    def set_akku_discharge_hours(self, ds):
-        self.akku.set_discharge_per_hour(ds)
+    def set_battery_discharge_hours(self, ds):
+        self.battery.set_discharge_per_hour(ds)
     
-    def set_eauto_charge_hours(self, ds):
-        self.eauto.set_charge_per_hour(ds)
+    def set_bev_charge_hours(self, ds):
+        self.bev.set_charge_per_hour(ds)
 
-    def set_haushaltsgeraet_start(self, ds, global_start_hour=0):
-        self.haushaltsgeraet.set_startzeitpunkt(ds,global_start_hour=global_start_hour)
+    def set_household_appliance_start(self, ds, global_start_hour=0):
+        self.household_appliance.set_start_time(ds,global_start_hour=global_start_hour)
         
     def reset(self):
-        self.eauto.reset()
-        self.akku.reset()
+        self.bev.reset()
+        self.battery.reset()
 
-    def simuliere_ab_jetzt(self):
+    def simulate_from_now(self):
         jetzt = datetime.now()
-        start_stunde = jetzt.hour
-        # Berechne die Anzahl der Stunden bis zum gleichen Zeitpunkt am nächsten Tag
-        stunden_bis_ende_tag = 24 - start_stunde
-        # Füge diese Stunden zum nächsten Tag hinzu
-        gesamt_stunden = stunden_bis_ende_tag + 24
+        starting_hour = jetzt.hour
+        # Berechne die Anzahl der hours bis zum gleichen Zeitpunkt am nächsten Tag
+        # hours_bis_ende_tag = 24 - starting_hour
+        # Füge diese hours zum nächsten Tag hinzu
+        #gesamt_hours = hours_bis_ende_tag + 24
 
-        # Beginne die Simulation ab der aktuellen Stunde und führe sie für die berechnete Dauer aus
-        return self.simuliere(start_stunde)
+        # Beginne die Simulation ab der aktuellen hour und führe sie für die berechnete duration aus
+        return self.simulate(starting_hour)
 
 
-    def simuliere(self, start_stunde):
-        last_wh_pro_stunde = []
-        netzeinspeisung_wh_pro_stunde = []
-        netzbezug_wh_pro_stunde = []
-        kosten_euro_pro_stunde = []
-        einnahmen_euro_pro_stunde = []
-        akku_soc_pro_stunde = []
-        eauto_soc_pro_stunde = []
-        verluste_wh_pro_stunde = []
-        haushaltsgeraet_wh_pro_stunde = []
-        lastkurve_wh = self.gesamtlast
+    def simulate(self, starting_hour):
+        load_wh_per_hour = []
+        feed_in_wh_per_hour = []
+        grid_consumption_wh_per_hour = []
+        cost_euro_per_hour = []
+        earnings_euro_per_hour = []
+        battery_soc_per_hour = []
+        bev_soc_per_hour = []
+        losses_wh_per_hour = []
+        household_appliance_wh_per_hour = []
+        load_curve_wh = self.total_load
         
         
-        assert len(lastkurve_wh) == len(self.pv_prognose_wh) == len(self.strompreis_euro_pro_wh), f"Arraygrößen stimmen nicht überein: Lastkurve = {len(lastkurve_wh)}, PV-Prognose = {len(self.pv_prognose_wh)}, Strompreis = {len(self.strompreis_euro_pro_wh)}"
+        assert len(load_curve_wh) == len(self.pv_forecast_wh) == len(self.electricity_price_euro_per_wh), f"Arraygrößen stimmen nicht überein: load_curve = {len(load_curve_wh)}, PV-Prognose = {len(self.pv_forecast_wh)}, electricity_price = {len(self.electricity_price_euro_per_wh)}"
 
-        ende = min( len(lastkurve_wh),len(self.pv_prognose_wh), len(self.strompreis_euro_pro_wh))
+        ende = min( len(load_curve_wh),len(self.pv_forecast_wh), len(self.electricity_price_euro_per_wh))
 
-        # Endzustände auf NaN setzen, damit diese übersprungen werden für die Stunde
-        last_wh_pro_stunde.append(np.nan)
-        netzeinspeisung_wh_pro_stunde.append(np.nan)
-        netzbezug_wh_pro_stunde.append(np.nan) 
-        kosten_euro_pro_stunde.append(np.nan) 
-        akku_soc_pro_stunde.append(self.akku.ladezustand_in_prozent()) 
-        einnahmen_euro_pro_stunde.append(np.nan) 
-        eauto_soc_pro_stunde.append(self.eauto.ladezustand_in_prozent())
-        verluste_wh_pro_stunde.append(np.nan)
-        haushaltsgeraet_wh_pro_stunde.append(np.nan)
+        # Endzustände auf NaN setzen, damit diese übersprungen werden für die hour
+        load_wh_per_hour.append(np.nan)
+        feed_in_wh_per_hour.append(np.nan)
+        grid_consumption_wh_per_hour.append(np.nan) 
+        cost_euro_per_hour.append(np.nan) 
+        battery_soc_per_hour.append(self.battery.charge_level_percentage()) 
+        earnings_euro_per_hour.append(np.nan) 
+        bev_soc_per_hour.append(self.bev.charge_level_percentage())
+        losses_wh_per_hour.append(np.nan)
+        household_appliance_wh_per_hour.append(np.nan)
         
-        # Berechnet das Ende basierend auf der Länge der Lastkurve
-        for stunde in range(start_stunde+1, ende):
+        # Berechnet das Ende basierend auf der Länge der load_curve
+        for hour in range(starting_hour+1, ende):
         
-            # Zustand zu Beginn der Stunde (Anfangszustand)
-            akku_soc_start = self.akku.ladezustand_in_prozent()  # Anfangszustand Akku-SoC
-            if self.eauto:
-                eauto_soc_start = self.eauto.ladezustand_in_prozent()  # Anfangszustand E-Auto-SoC
+            # Zustand zu Beginn der hour (Anfangszustand)
+            battery_soc_start = self.battery.charge_level_percentage()  # Anfangszustand battery-SoC
+            if self.bev:
+                bev_soc_start = self.bev.charge_level_percentage()  # Anfangszustand E-Auto-SoC
 
 
         
             # Anpassung, um sicherzustellen, dass Indizes korrekt sind
-            verbrauch = lastkurve_wh[stunde]   # Verbrauch für die Stunde
-            if self.haushaltsgeraet != None:
-                verbrauch = verbrauch + self.haushaltsgeraet.get_last_fuer_stunde(stunde)
-                haushaltsgeraet_wh_pro_stunde.append(self.haushaltsgeraet.get_last_fuer_stunde(stunde))
+            consumption = load_curve_wh[hour]   # consumption für die hour
+            if self.household_appliance != None:
+                consumption = consumption + self.household_appliance.get_load_for_hour(hour)
+                household_appliance_wh_per_hour.append(self.household_appliance.get_load_for_hour(hour))
             else: 
-                haushaltsgeraet_wh_pro_stunde.append(0)
-            erzeugung = self.pv_prognose_wh[stunde]
-            strompreis = self.strompreis_euro_pro_wh[stunde] if stunde < len(self.strompreis_euro_pro_wh) else self.strompreis_euro_pro_wh[-1]
+                household_appliance_wh_per_hour.append(0)
+            generation = self.pv_forecast_wh[hour]
+            electricity_price = self.electricity_price_euro_per_wh[hour] if hour < len(self.electricity_price_euro_per_wh) else self.electricity_price_euro_per_wh[-1]
             
-            verluste_wh_pro_stunde.append(0.0)
+            losses_wh_per_hour.append(0.0)
 
             # Logik für die E-Auto-Ladung bzw. Entladung
-            if self.eauto:  # Falls ein E-Auto vorhanden ist
-                geladene_menge_eauto, verluste_eauto = self.eauto.energie_laden(None,stunde)
-                verbrauch = verbrauch + geladene_menge_eauto
-                verluste_wh_pro_stunde[-1] += verluste_eauto
-                eauto_soc = self.eauto.ladezustand_in_prozent()
+            if self.bev:  # Falls ein E-Auto vorhanden ist
+                charged_amount_bev, losses_bev = self.bev.charge_energy(None,hour)
+                consumption = consumption + charged_amount_bev
+                losses_wh_per_hour[-1] += losses_bev
+                bev_soc = self.bev.charge_level_percentage()
 
 
             
-            stündlicher_netzbezug_wh = 0
-            stündliche_kosten_euro = 0
-            stündliche_einnahmen_euro = 0
+            stündlicher_grid_consumption_wh = 0
+            hourly_cost_eur = 0
+            hourly_income_eur = 0
 
             #Wieviel kann der WR 
-            netzeinspeisung, netzbezug,  verluste, eigenverbrauch = self.wechselrichter.energie_verarbeiten(erzeugung, verbrauch, stunde)
+            grid_feed_in, grid_consumption,  losses, own_consumption = self.inverter.process_energy(generation, consumption, hour)
             
             # Speichern
-            netzeinspeisung_wh_pro_stunde.append(netzeinspeisung)
-            stündliche_einnahmen_euro = netzeinspeisung* self.einspeiseverguetung_euro_pro_wh[stunde] 
+            feed_in_wh_per_hour.append(grid_feed_in)
+            hourly_income_eur = grid_feed_in* self.feed_in_tariff_euro_per_wh[hour] 
             
-            stündliche_kosten_euro = netzbezug * strompreis 
-            netzbezug_wh_pro_stunde.append(netzbezug)
-            verluste_wh_pro_stunde[-1] += verluste
-            last_wh_pro_stunde.append(eigenverbrauch+netzbezug)
+            hourly_cost_eur = grid_consumption * electricity_price 
+            grid_consumption_wh_per_hour.append(grid_consumption)
+            losses_wh_per_hour[-1] += losses
+            load_wh_per_hour.append(own_consumption + grid_consumption)
             
 
             
-            if self.eauto:
-                eauto_soc_pro_stunde.append(eauto_soc)
+            if self.bev:
+                bev_soc_per_hour.append(bev_soc)
             
-            akku_soc_pro_stunde.append(self.akku.ladezustand_in_prozent())
+            battery_soc_per_hour.append(self.battery.charge_level_percentage())
          
-            kosten_euro_pro_stunde.append(stündliche_kosten_euro)
-            einnahmen_euro_pro_stunde.append(stündliche_einnahmen_euro)
+            cost_euro_per_hour.append(hourly_cost_eur)
+            earnings_euro_per_hour.append(hourly_income_eur)
 
 
-        gesamtkosten_euro = np.nansum(kosten_euro_pro_stunde) - np.nansum(einnahmen_euro_pro_stunde)
-        expected_length = ende - start_stunde
-        array_names = ['Eigenverbrauch_Wh_pro_Stunde', 'Netzeinspeisung_Wh_pro_Stunde', 'Netzbezug_Wh_pro_Stunde', 'Kosten_Euro_pro_Stunde', 'akku_soc_pro_stunde', 'Einnahmen_Euro_pro_Stunde','E-Auto_SoC_pro_Stunde', "Verluste_Pro_Stunde"]
-        all_arrays = [last_wh_pro_stunde, netzeinspeisung_wh_pro_stunde, netzbezug_wh_pro_stunde, kosten_euro_pro_stunde, akku_soc_pro_stunde, einnahmen_euro_pro_stunde,eauto_soc_pro_stunde,verluste_wh_pro_stunde]
+        gesamtkosten_euro = np.nansum(cost_euro_per_hour) - np.nansum(earnings_euro_per_hour)
+        expected_length = ende - starting_hour
+        array_names = ['own_consumption_Wh_per_hour', 'feed_in_wh_per_hour', 'grid_consumption_wh_per_hour', 'cost_euro_per_hour', 'battery_soc_per_hour', 'earnings_euro_per_hour','E-Auto_SoC_per_hour', "losses_per_hour"]
+        all_arrays = [load_wh_per_hour, feed_in_wh_per_hour, grid_consumption_wh_per_hour, cost_euro_per_hour, battery_soc_per_hour, earnings_euro_per_hour,bev_soc_per_hour,losses_wh_per_hour]
 
         inconsistent_arrays = [name for name, arr in zip(array_names, all_arrays) if len(arr) != expected_length]
         #print(inconsistent_arrays)
@@ -151,19 +152,19 @@ class EnergieManagementSystem:
             raise ValueError(f"Inkonsistente Längen bei den Arrays: {', '.join(inconsistent_arrays)}. Erwartete Länge: {expected_length}, gefunden: {[len(all_arrays[array_names.index(name)]) for name in inconsistent_arrays]}")
 
         out = {
-            'Last_Wh_pro_Stunde': last_wh_pro_stunde,
-            'Netzeinspeisung_Wh_pro_Stunde': netzeinspeisung_wh_pro_stunde,
-            'Netzbezug_Wh_pro_Stunde': netzbezug_wh_pro_stunde,
-            'Kosten_Euro_pro_Stunde': kosten_euro_pro_stunde,
-            'akku_soc_pro_stunde': akku_soc_pro_stunde,
-            'Einnahmen_Euro_pro_Stunde': einnahmen_euro_pro_stunde,
-            'Gesamtbilanz_Euro': gesamtkosten_euro,
-            'E-Auto_SoC_pro_Stunde':eauto_soc_pro_stunde,
-            'Gesamteinnahmen_Euro': np.nansum(einnahmen_euro_pro_stunde),
-            'Gesamtkosten_Euro': np.nansum(kosten_euro_pro_stunde),
-            "Verluste_Pro_Stunde":verluste_wh_pro_stunde,
-            "Gesamt_Verluste":np.nansum(verluste_wh_pro_stunde),
-            "Haushaltsgeraet_wh_pro_stunde":haushaltsgeraet_wh_pro_stunde
+            'load_wh_per_hour': load_wh_per_hour,
+            'feed_in_wh_per_hour': feed_in_wh_per_hour,
+            'grid_consumption_wh_per_hour': grid_consumption_wh_per_hour,
+            'cost_euro_per_hour': cost_euro_per_hour,
+            'battery_soc_per_hour': battery_soc_per_hour,
+            'earnings_euro_per_hour': earnings_euro_per_hour,
+            'overall_balance_Euro': gesamtkosten_euro,
+            'E-Auto_SoC_per_hour':bev_soc_per_hour,
+            'Gesamteinnahmen_Euro': np.nansum(earnings_euro_per_hour),
+            'Gesamtkosten_Euro': np.nansum(cost_euro_per_hour),
+            "losses_per_hour":losses_wh_per_hour,
+            "Gesamt_losses":np.nansum(losses_wh_per_hour),
+            "household_appliance_wh_per_hour":household_appliance_wh_per_hour
         }
         
         out = replace_nan_with_none(out)

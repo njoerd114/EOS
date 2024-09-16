@@ -4,13 +4,13 @@ import numpy as np
 from  modules.class_load import *
 from  modules.class_ems import *
 from  modules.class_pv_forecast import *
-from modules.class_akku import *
-from modules.class_strompreis import *
+from modules.class_battery import *
+from modules.class_electricity_price import *
 from modules.class_heatpump import * 
 from modules.class_load_container import * 
-from modules.class_sommerzeit import *
+from modules.class_summertime import *
 from modules.class_soc_calc import *
-from modules.visualize import *
+from modules.render import *
 #from modules.class_battery_soc_predictor import *
 from modules.class_load_corrector import *
 import os
@@ -30,12 +30,12 @@ from config import *
 
 app = Flask(__name__)
 
-opt_class = optimization_problem(prediction_hours=prediction_hours, strafe=10, optimization_hours=optimization_hours)
+opt_class = optimization_problem(prediction_hours=prediction_hours, penalty=10, optimization_hours=optimization_hours)
 
 
 
-# @app.route('/last_correction', methods=['GET'])
-# def flask_last_correction():
+# @app.route('/load_correction', methods=['GET'])
+# def flask_load_correction():
     # if request.method == 'GET':
         # year_energy = float(request.args.get("year_energy"))
         # date_now,date = get_start_enddate(prediction_hours,startdate=datetime.now().date())
@@ -43,22 +43,22 @@ opt_class = optimization_problem(prediction_hours=prediction_hours, strafe=10, o
         # # Load Forecast
         # ###############
         # lf = LoadForecast(filepath=r'load_profiles.npz', year_energy=year_energy)
-        # #leistung_haushalt = lf.get_daily_stats(date)[0,...]  # Datum anpassen
-        # leistung_haushalt = lf.get_stats_for_date_range(date_now,date)[0] # Nur Erwartungswert!        
+        # #power_haushalt = lf.get_daily_stats(date)[0,...]  # Datum anpassen
+        # power_haushalt = lf.get_stats_for_date_range(date_now,date)[0] # Nur Erwartungswert!        
         
-        # gesamtlast = Gesamtlast(prediction_hours=prediction_hours)        
-        # gesamtlast.hinzufuegen("Haushalt", leistung_haushalt)
+        # total_load = total_load(prediction_hours=prediction_hours)        
+        # total_load.add("Haushalt", power_haushalt)
 
         # # ###############
         # # # WP
         # # ##############
-        # # leistung_wp = wp.simulate_24h(temperature_forecast)
-        # # gesamtlast.hinzufuegen("Heatpump", leistung_wp)
+        # # power_wp = wp.simulate_24h(temperaturee_forecast)
+        # # total_load.add("Heatpump", power_wp)
                 
-        # last = gesamtlast.gesamtlast_berechnen()
-        # print(last)
+        # load = total_load.calculate_total_load()
+        # print(load)
         # #print(specific_date_prices)
-        # return jsonify(last.tolist())
+        # return jsonify(load.tolist())
 
 
 @app.route('/soc', methods=['GET'])
@@ -75,19 +75,19 @@ def flask_soc():
     bat_capacity = 33 * 1000 / 48 
 
     # Zeitpunkt X definieren
-    zeitpunkt_x = (datetime.now() - timedelta(weeks=3)).strftime('%Y-%m-%d %H:%M:%S')
+    datetime_x = (datetime.now() - timedelta(weeks=3)).strftime('%Y-%m-%d %H:%M:%S')
 
 
     # BatteryDataProcessor instanziieren und verwenden
     processor = BatteryDataProcessor(config, voltage_high_threshold, voltage_low_threshold, current_low_threshold, gap,bat_capacity)
     processor.connect_db()
-    processor.fetch_data(zeitpunkt_x)
+    processor.fetch_data(datetime_x)
     processor.process_data()
-    last_points_100_df, last_points_0_df = processor.find_soc_points()
-    soc_df, integration_results = processor.calculate_resetting_soc(last_points_100_df, last_points_0_df)
+    load_points_100_df, load_points_0_df = processor.find_soc_points()
+    soc_df, integration_results = processor.calculate_resetting_soc(load_points_100_df, load_points_0_df)
     #soh_df = processor.calculate_soh(integration_results)
     processor.update_database_with_soc(soc_df)
-    #processor.plot_data(last_points_100_df, last_points_0_df, soc_df)
+    #processor.plot_data(load_points_100_df, load_points_0_df, soc_df)
     processor.disconnect_db()
         
     return jsonify("Done")
@@ -96,23 +96,23 @@ def flask_soc():
 
 
 
-@app.route('/strompreis', methods=['GET'])
-def flask_strompreis():
+@app.route('/electricity_price', methods=['GET'])
+def flask_electricity_price():
         date_now,date = get_start_enddate(prediction_hours,startdate=datetime.now().date())
-        filepath = os.path.join (r'test_data', r'strompreise_akkudokAPI.json')  # Pfad zur JSON-Datei anpassen
+        filepath = os.path.join (r'test_data', r'electricity_prices_batterydokAPI.json')  # Pfad zur JSON-Datei anpassen
         #price_forecast = HourlyElectricityPriceForecast(source=filepath)
-        price_forecast = HourlyElectricityPriceForecast(source="https://api.akkudoktor.net/prices?start="+date_now+"&end="+date+"", prediction_hours=prediction_hours)
+        price_forecast = HourlyElectricityPriceForecast(source="https://api.batterydoktor.net/prices?start="+date_now+"&end="+date+"", prediction_hours=prediction_hours)
         specific_date_prices = price_forecast.get_price_for_daterange(date_now,date)
         #print(specific_date_prices)
         return jsonify(specific_date_prices.tolist())
 
 
 
-# Die letzten X gemessenen Daten + gesamtlast Simple oder eine andere Schätung als Input
-# Daraus wird dann eine neuen Lastprognose erstellt welche korrigiert ist.
+# Die letzten X gemessenen Daten + total_load Simple oder eine andere Schätung als Input
+# Daraus wird dann eine neuen loadprognose erstellt welche korrigiert ist.
 # Input: 
-@app.route('/gesamtlast', methods=['POST'])
-def flask_gesamtlast():
+@app.route('/total_load', methods=['POST'])
+def flask_total_load():
     # Daten aus dem JSON-Body abrufen
     data = request.get_json()
 
@@ -149,7 +149,7 @@ def flask_gesamtlast():
         daily_forecast = lf.get_daily_stats(date_str)
         mean_values = daily_forecast[0]
         hours = [single_date + pd.Timedelta(hours=i) for i in range(24)]
-        daily_forecast_df = pd.DataFrame({'time': hours, 'Last Pred': mean_values})
+        daily_forecast_df = pd.DataFrame({'time': hours, 'load Pred': mean_values})
         forecast_list.append(daily_forecast_df)
 
     # Concatenate all daily forecasts into a single DataFrame
@@ -166,29 +166,29 @@ def flask_gesamtlast():
     future_predictions = adjuster.predict_next_hours(prediction_hours)
 
     # Extract the household power predictions
-    leistung_haushalt = future_predictions['Adjusted Pred'].values
+    power_haushalt = future_predictions['Adjusted Pred'].values
 
-    # Instantiate Gesamtlast and add household power predictions
-    gesamtlast = Gesamtlast(prediction_hours=prediction_hours)        
-    gesamtlast.hinzufuegen("Haushalt", leistung_haushalt)
+    # Instantiate total_load and add household power predictions
+    total_load = total_load(prediction_hours=prediction_hours)        
+    total_load.add("Haushalt", power_haushalt)
 
     # ###############
     # # WP (optional)
     # ###############
-    # leistung_wp = wp.simulate_24h(temperature_forecast)
-    # gesamtlast.hinzufuegen("Heatpump", leistung_wp)
+    # power_wp = wp.simulate_24h(temperaturee_forecast)
+    # total_load.add("Heatpump", power_wp)
     
     # Calculate the total load
-    last = gesamtlast.gesamtlast_berechnen()
+    load = total_load.calculate_total_load()
 
     # Return the calculated load as JSON
-    return jsonify(last.tolist())
+    return jsonify(load.tolist())
 
 
 
 
-# @app.route('/gesamtlast', methods=['GET'])
-# def flask_gesamtlast():
+# @app.route('/total_load', methods=['GET'])
+# def flask_total_load():
     # if request.method == 'GET':
         # year_energy = float(request.args.get("year_energy"))
         # prediction_hours = int(request.args.get("hours", 48))  # Default to 24 hours if not specified
@@ -198,16 +198,16 @@ def flask_gesamtlast():
         # ###############
         # # Load Forecast
         # ###############
-        # # Instantiate LastEstimator and get measured data
-        # estimator = LastEstimator()
-        # start_date = (date_now - timedelta(days=60)).strftime('%Y-%m-%d')  # Example: last 60 days
+        # # Instantiate loadEstimator and get measured data
+        # estimator = loadEstimator()
+        # start_date = (date_now - timedelta(days=60)).strftime('%Y-%m-%d')  # Example: load 60 days
         # end_date = date_now.strftime('%Y-%m-%d')  # Current date
 
-        # last_df = estimator.get_last(start_date, end_date)
+        # load_df = estimator.get_load(start_date, end_date)
 
-        # selected_columns = last_df[['timestamp', 'Last']]
+        # selected_columns = load_df[['timestamp', 'load']]
         # selected_columns['time'] = pd.to_datetime(selected_columns['timestamp']).dt.floor('H')
-        # selected_columns['Last'] = pd.to_numeric(selected_columns['Last'], errors='coerce')
+        # selected_columns['load'] = pd.to_numeric(selected_columns['load'], errors='coerce')
         # cleaned_data = selected_columns.dropna()
 
         # # Instantiate LoadForecast
@@ -220,7 +220,7 @@ def flask_gesamtlast():
             # daily_forecast = lf.get_daily_stats(date_str)
             # mean_values = daily_forecast[0]
             # hours = [single_date + pd.Timedelta(hours=i) for i in range(24)]
-            # daily_forecast_df = pd.DataFrame({'time': hours, 'Last Pred': mean_values})
+            # daily_forecast_df = pd.DataFrame({'time': hours, 'load Pred': mean_values})
             # forecast_list.append(daily_forecast_df)
 
         # forecast_df = pd.concat(forecast_list, ignore_index=True)
@@ -233,24 +233,24 @@ def flask_gesamtlast():
         # # Predict the next hours
         # future_predictions = adjuster.predict_next_hours(prediction_hours)
 
-        # leistung_haushalt = future_predictions['Adjusted Pred'].values
+        # power_haushalt = future_predictions['Adjusted Pred'].values
 
-        # gesamtlast = Gesamtlast(prediction_hours=prediction_hours)        
-        # gesamtlast.hinzufuegen("Haushalt", leistung_haushalt)
+        # total_load = total_load(prediction_hours=prediction_hours)        
+        # total_load.add("Haushalt", power_haushalt)
 
         # # ###############
         # # # WP
         # # ##############
-        # # leistung_wp = wp.simulate_24h(temperature_forecast)
-        # # gesamtlast.hinzufuegen("Heatpump", leistung_wp)
+        # # power_wp = wp.simulate_24h(temperaturee_forecast)
+        # # total_load.add("Heatpump", power_wp)
                 
-        # last = gesamtlast.gesamtlast_berechnen()
-        # print(last)
-        # return jsonify(last.tolist())
+        # load = total_load.calculate_total_load()
+        # print(load)
+        # return jsonify(load.tolist())
 
              
-@app.route('/gesamtlast_simple', methods=['GET'])
-def flask_gesamtlast_simple():
+@app.route('/total_load_simple', methods=['GET'])
+def flask_total_load_simple():
     if request.method == 'GET':
         year_energy = float(request.args.get("year_energy"))
         date_now,date = get_start_enddate(prediction_hours,startdate=datetime.now().date())
@@ -258,22 +258,22 @@ def flask_gesamtlast_simple():
         # Load Forecast
         ###############
         lf = LoadForecast(filepath=r'load_profiles.npz', year_energy=year_energy)
-        #leistung_haushalt = lf.get_daily_stats(date)[0,...]  # Datum anpassen
-        leistung_haushalt = lf.get_stats_for_date_range(date_now,date)[0] # Nur Erwartungswert!        
+        #power_haushalt = lf.get_daily_stats(date)[0,...]  # Datum anpassen
+        power_haushalt = lf.get_stats_for_date_range(date_now,date)[0] # Nur Erwartungswert!        
         
-        gesamtlast = Gesamtlast(prediction_hours=prediction_hours)        
-        gesamtlast.hinzufuegen("Haushalt", leistung_haushalt)
+        total_load = total_load(prediction_hours=prediction_hours)        
+        total_load.add("Haushalt", power_haushalt)
 
         # ###############
         # # WP
         # ##############
-        # leistung_wp = wp.simulate_24h(temperature_forecast)
-        # gesamtlast.hinzufuegen("Heatpump", leistung_wp)
+        # power_wp = wp.simulate_24h(temperaturee_forecast)
+        # total_load.add("Heatpump", power_wp)
                 
-        last = gesamtlast.gesamtlast_berechnen()
-        print(last)
+        load = total_load.calculate_total_load()
+        print(load)
         #print(specific_date_prices)
-        return jsonify(last.tolist())
+        return jsonify(load.tolist())
 
 @app.route('/pvforecast', methods=['GET'])
 def flask_pvprognose():
@@ -292,10 +292,10 @@ def flask_pvprognose():
             #PVforecast.print_ac_power_and_measurement()
         
         pv_forecast = PVforecast.get_pv_forecast_for_date_range(date_now,date) #get_forecast_for_date(date)
-        temperature_forecast = PVforecast.get_temperature_for_date_range(date_now,date)
+        temperaturee_forecast = PVforecast.get_temperaturee_for_date_range(date_now,date)
 
         #print(specific_date_prices)
-        ret = {"temperature":temperature_forecast.tolist(),"pvpower":pv_forecast.tolist()}
+        ret = {"temperaturee":temperaturee_forecast.tolist(),"pvpower":pv_forecast.tolist()}
         return jsonify(ret)
 
 
@@ -305,20 +305,21 @@ def flask_optimize():
         parameter = request.json
         
         # Erforderliche Parameter prüfen
-        erforderliche_parameter = [ 'preis_euro_pro_wh_akku','strompreis_euro_pro_wh', "gesamtlast",'pv_akku_cap', "einspeiseverguetung_euro_pro_wh",  'pv_forecast','temperature_forecast', 'eauto_min_soc', "eauto_cap","eauto_charge_efficiency","eauto_charge_power","eauto_soc","pv_soc","start_solution","haushaltsgeraet_dauer","haushaltsgeraet_wh"]
+        erforderliche_parameter = [ 'preis_euro_pro_wh_battery','electricity_price_euro_per_wh', "total_load",'pv_battery_cap', "feed_in_tariff_euro_per_wh
+",  'pv_forecast','temperaturee_forecast', 'bev_min_soc', "bev_cap","bev_charge_efficiency","bev_charge_power","bev_soc","pv_soc","start_solution","household_appliance_duration","household_appliance_wh"]
         for p in erforderliche_parameter:
             if p not in parameter:
                 return jsonify({"error": f"Fehlender Parameter: {p}"}), 400
 
         # Simulation durchführen
-        ergebnis = opt_class.optimierung_ems(parameter=parameter, start_hour=datetime.now().hour) # , startdate = datetime.now().date() - timedelta(days = 1)
+        ergebnis = opt_class.optimization_ems(parameter=parameter, start_hour=datetime.now().hour) # , startdate = datetime.now().date() - timedelta(days = 1)
         
         return jsonify(ergebnis)
 
 
-@app.route('/visualisierungsergebnisse.pdf')
+@app.route('/rendered_results.pdf')
 def get_pdf():
-    return send_from_directory('', 'visualisierungsergebnisse.pdf')
+    return send_from_directory('', 'rendered_results.pdf')
 
 
 @app.route("/site-map")
@@ -359,5 +360,5 @@ if __name__ == '__main__':
 # PV Forecast:
 #   object {
 #    pvpower: array[48]
-#    temperature: array[48]
+#    temperaturee: array[48]
 #   }

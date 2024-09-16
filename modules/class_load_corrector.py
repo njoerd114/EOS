@@ -36,9 +36,9 @@ class LoadPredictionAdjuster:
 
 
     def _remove_outliers(self, data, threshold=2):
-            # Berechne den Z-Score der 'Last'-Daten
-            data['Z-Score'] = np.abs((data['Last'] - data['Last'].mean()) / data['Last'].std())
-            # Filtere die Daten nach dem Schwellenwert
+            # Berechne den Z-Score der 'load'-Daten
+            data['Z-Score'] = np.abs((data['load'] - data['load'].mean()) / data['load'].std())
+            # Filtere die Daten after dem Schwellenwert
             filtered_data = data[data['Z-Score'] < threshold]
             return filtered_data.drop(columns=['Z-Score'])
 
@@ -80,7 +80,7 @@ class LoadPredictionAdjuster:
         self.train_data = self.merged_data[(self.merged_data['time'] >= train_start_date) & (self.merged_data['time'] <= train_end_date)]
         self.test_data = self.merged_data[(self.merged_data['time'] >= test_start_date) & (self.merged_data['time'] <= test_end_date)]
 
-        self.train_data['Difference'] = self.train_data['Last'] - self.train_data['Last Pred']
+        self.train_data['Difference'] = self.train_data['load'] - self.train_data['load Pred']
 
         weekdays_train_data = self.train_data[self.train_data['DayOfWeek'] < 5]
         weekends_train_data = self.train_data[self.train_data['DayOfWeek'] >= 5]
@@ -100,9 +100,9 @@ class LoadPredictionAdjuster:
 
     def _adjust_row(self, row):
         if row['DayOfWeek'] < 5:
-            return row['Last Pred'] + self.weekday_diff.get(row['Hour'], 0)
+            return row['load Pred'] + self.weekday_diff.get(row['Hour'], 0)
         else:
-            return row['Last Pred'] + self.weekend_diff.get(row['Hour'], 0)
+            return row['load Pred'] + self.weekend_diff.get(row['Hour'], 0)
 
     def plot_results(self):
         self._plot_data(self.train_data, 'Training')
@@ -110,9 +110,9 @@ class LoadPredictionAdjuster:
 
     def _plot_data(self, data, data_type):
         plt.figure(figsize=(14, 7))
-        plt.plot(data['time'], data['Last'], label=f'Actual Last - {data_type}', color='blue')
-        plt.plot(data['time'], data['Last Pred'], label=f'Predicted Last - {data_type}', color='red', linestyle='--')
-        plt.plot(data['time'], data['Adjusted Pred'], label=f'Adjusted Predicted Last - {data_type}', color='green', linestyle=':')
+        plt.plot(data['time'], data['load'], label=f'Actual load - {data_type}', color='blue')
+        plt.plot(data['time'], data['load Pred'], label=f'Predicted load - {data_type}', color='red', linestyle='--')
+        plt.plot(data['time'], data['Adjusted Pred'], label=f'Adjusted Predicted load - {data_type}', color='green', linestyle=':')
         plt.xlabel('Time')
         plt.ylabel('Load')
         plt.title(f'Actual vs Predicted vs Adjusted Predicted Load ({data_type} Data)')
@@ -121,18 +121,18 @@ class LoadPredictionAdjuster:
         plt.show()
 
     def evaluate_model(self):
-        mse = mean_squared_error(self.test_data['Last'], self.test_data['Adjusted Pred'])
-        r2 = r2_score(self.test_data['Last'], self.test_data['Adjusted Pred'])
+        mse = mean_squared_error(self.test_data['load'], self.test_data['Adjusted Pred'])
+        r2 = r2_score(self.test_data['load'], self.test_data['Adjusted Pred'])
         print(f'Mean Squared Error: {mse}')
         print(f'R-squared: {r2}')
 
     def predict_next_hours(self, hours_ahead):
-        last_date = self.merged_data['time'].max()
-        future_dates = [last_date + pd.Timedelta(hours=i) for i in range(1, hours_ahead + 1)]
+        load_date = self.merged_data['time'].max()
+        future_dates = [load_date + pd.Timedelta(hours=i) for i in range(1, hours_ahead + 1)]
         future_df = pd.DataFrame({'time': future_dates})
         future_df['Hour'] = future_df['time'].dt.hour
         future_df['DayOfWeek'] = future_df['time'].dt.dayofweek
-        future_df['Last Pred'] = future_df['time'].apply(self._forecast_next_hours)
+        future_df['load Pred'] = future_df['time'].apply(self._forecast_next_hours)
         future_df['Adjusted Pred'] = future_df.apply(self._adjust_row, axis=1)
         return future_df
 
@@ -156,14 +156,14 @@ class LoadPredictionAdjuster:
 # if __name__ == '__main__':
 
 
-        # estimator = LastEstimator()
+        # estimator = loadEstimator()
         # start_date = "2024-06-01"
         # end_date = "2024-08-01"
-        # last_df = estimator.get_last(start_date, end_date)
+        # load_df = estimator.get_load(start_date, end_date)
 
-        # selected_columns = last_df[['timestamp', 'Last']]
+        # selected_columns = load_df[['timestamp', 'load']]
         # selected_columns['time'] = pd.to_datetime(selected_columns['timestamp']).dt.floor('H')
-        # selected_columns['Last'] = pd.to_numeric(selected_columns['Last'], errors='coerce')
+        # selected_columns['load'] = pd.to_numeric(selected_columns['load'], errors='coerce')
 
         # # Drop rows with NaN values
         # cleaned_data = selected_columns.dropna()
@@ -182,7 +182,7 @@ class LoadPredictionAdjuster:
                 # daily_forecast = lf.get_daily_stats(date_str)
                 # mean_values = daily_forecast[0]  # Extract the mean values
                 # hours = [single_date + pd.Timedelta(hours=i) for i in range(24)]
-                # daily_forecast_df = pd.DataFrame({'time': hours, 'Last Pred': mean_values})
+                # daily_forecast_df = pd.DataFrame({'time': hours, 'load Pred': mean_values})
                 # forecast_list.append(daily_forecast_df)
 
         # # Concatenate all daily forecasts into a single DataFrame

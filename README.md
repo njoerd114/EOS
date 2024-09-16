@@ -1,29 +1,29 @@
-# Energiesystem Simulation und Optimierung
+# Energiesystem Simulation und optimization
 
-Dieses Projekt bietet eine umfassende Lösung zur Simulation und Optimierung eines Energiesystems, das auf erneuerbaren Energiequellen basiert. Mit Fokus auf Photovoltaik (PV)-Anlagen, Batteriespeichern (Akkus), Lastmanagement (Verbraucheranforderungen), Wärmepumpen, Elektrofahrzeugen und der Berücksichtigung von Strompreisdaten ermöglicht dieses System die Vorhersage und Optimierung des Energieflusses und der Kosten über einen bestimmten Zeitraum.
+Dieses Projekt bietet eine umfassende Lösung zur Simulation und optimization eines Energiesystems, das auf erneuerbaren Energiequellen basiert. Mit Fokus auf Photovoltaik (PV)-Anlagen, Batteriespeichern (batterys), loadmanagement (consumptioneranforderungen), Wärmepumpen, Elektrofahrzeugen und der Berücksichtigung von electricity_pricedaten ermöglicht dieses System die Vorhersage und optimization des Energieflusses und der Kosten über einen bestimmten Zeitraum.
 
 ## Diskussionen und Zugriffsanfragen 
-https://www.akkudoktor.net/forum/diy-energie-optimierungssystem-opensource-projekt/
+https://www.batterydoktor.net/forum/diy-energie-optimizationssystem-opensource-projekt/
 
 ## Todo
-- `Backend:` Mehr Optimierungsparameter
+- `Backend:` Mehr optimizationsparameter
 - `Frontend:` User Management
 - `Frontend:` Grafische Ausgabe
 - `Frontend:` Speichern von User Einstellungen (PV Anlage usw.)
 - `Frontend:` Festeingestellte E-Autos / Wärmepumpen in DB
 - `Simulation:` Wärmepumpe allgemeineren Ansatz
-- `Simulation:` Strompreisvorhersage > 1D (Timeseries Forecast)
-- `Simulation:` Lastverteilung 1h Werte -> Minuten (Tabelle) 
-- `Dynamische Lasten:` z.B. eine Spülmaschine, welche gesteuert werdeb jabb,
+- `Simulation:` electricity_pricevorhersage > 1D (Timeseries Forecast)
+- `Simulation:` loadverteilung 1h Werte -> Minuten (Tabelle) 
+- `Dynamische loads:` z.B. eine Spülmaschine, welche gesteuert werdeb jabb,
 - `Simulation:` AC Chargen möglich
-- `Optimierung:` E-Auto Akku voll = in der 0/1 Liste keine Möglichkeit mehr auf 1 (aktuell ist der Optimierung das egalm ändert ja nichts) Optimierungsparameter reduzieren
-- `Backend:` Visual Cleaner (z.B. E-Auto Akku = 100%, dann sollte die Lademöglichkeit auf 0 stehen. Zumindest bei der Ausgabe sollte das "sauber" sein)
+- `optimization:` E-Auto battery voll = in der 0/1 Liste keine Möglichkeit mehr auf 1 (aktuell ist der optimization das egalm ändert ja nichts) optimizationsparameter reduzieren
+- `Backend:` Visual Cleaner (z.B. E-Auto battery = 100%, dann sollte die Lademöglichkeit auf 0 stehen. Zumindest bei der Ausgabe sollte das "sauber" sein)
 - `Backend:` Cache regelmäßig leeren können (API)
 
 ## Installation
 
 Gute Install Anleitung: 
-https://meintechblog.de/2024/09/05/andreas-schmitz-joerg-installiert-mein-energieoptimierungssystem/
+https://meintechblog.de/2024/09/05/andreas-schmitz-joerg-installiert-mein-energieoptimizationssystem/
 
 Das Projekt erfordert Python 3.8 oder neuer.
 
@@ -49,7 +49,7 @@ Eine vollständige Übersicht über die wichtigsten Kurzbefehle gibt `make help`
 Alle notwendigen Abhängigkeiten können über `pip` installiert werden. Klonen Sie das Repository und installieren Sie die erforderlichen Pakete mit:
 
 ```bash
-git clone https://github.com/Akkudoktor-EOS/EOS
+git clone https://github.com/batterydoktor-EOS/EOS
 cd EOS
 ```
 Als Nächstes legen wir ein virtuelles Environment an. Es dient zur Ablage der Python-Abhängigkeiten,
@@ -99,98 +99,99 @@ Um das System zu nutzen, führen Sie `flask_server.py` aus, damit wird der Serve
 ```
 ## Klassen und Funktionalitäten
 
-In diesem Projekt werden verschiedene Klassen verwendet, um die Komponenten eines Energiesystems zu simulieren und zu optimieren. Jede Klasse repräsentiert einen spezifischen Aspekt des Systems, wie nachfolgend beschrieben:
+In diesem Projekt werden verschiedene Klassen verwendet, um die Komponenten eines Energiesystems zu simulaten und zu optimieren. Jede Klasse repräsentiert einen spezifischen Aspekt des Systems, wie afterfolgend beschrieben:
 
-- `PVAkku`: Simuliert einen Batteriespeicher, einschließlich der Kapazität, des Ladezustands und jetzt auch der Lade- und Entladeverluste.
+- `PVbattery`: Simuliert einen Batteriespeicher, einschließlich der Kapazität, des charge_levels und jetzt auch der Lade- und Entladelosses.
 
-- `PVForecast`: Stellt Vorhersagedaten für die Photovoltaik-Erzeugung bereit, basierend auf Wetterdaten und historischen Erzeugungsdaten.
+- `PVForecast`: Stellt Vorhersagedaten für die Photovoltaik-generation bereit, basierend auf Wetterdaten und historischen generationsdaten.
 
-- `Load`: Modelliert die Lastanforderungen des Haushalts oder Unternehmens, ermöglicht die Vorhersage des zukünftigen Energiebedarfs.
+- `Load`: Modelliert die loadanforderungen des Haushalts oder Unternehmens, ermöglicht die Vorhersage des zukünftigen Energiebedarfs.
 
-- `HeatPump`: Simuliert eine Wärmepumpe, einschließlich ihres Energieverbrauchs und ihrer Effizienz unter verschiedenen Betriebsbedingungen.
+- `HeatPump`: Simuliert eine Wärmepumpe, einschließlich ihres Energieconsumptions und ihrer Effizienz unter verschiedenen Betriebsbedingungen.
 
-- `Strompreis`: Bietet Informationen zu den Strompreisen, ermöglicht die Optimierung des Energieverbrauchs und der -erzeugung basierend auf Tarifinformationen.
+- `electricity_price`: Bietet Informationen zu den electricity_pricesn, ermöglicht die optimization des Energieconsumptions und der -generation basierend auf Tarifinformationen.
 
-- `EMS`: Das Energiemanagementsystem (EMS) koordiniert die Interaktion zwischen den verschiedenen Komponenten, führt die Optimierung durch und simuliert den Betrieb des gesamten Energiesystems.
+- `EMS`: Das Energiemanagementsystem (EMS) koordiniert die Interaktion zwischen den verschiedenen Komponenten, führt die optimization durch und simuliert den Betrieb des gesamten Energiesystems.
 
-Diese Klassen arbeiten zusammen, um eine detaillierte Simulation und Optimierung des Energiesystems zu ermöglichen. Für jede Klasse können spezifische Parameter und Einstellungen angepasst werden, um verschiedene Szenarien und Strategien zu testen.
+Diese Klassen arbeiten zusammen, um eine detaillierte Simulation und optimization des Energiesystems zu ermöglichen. Für jede Klasse können spezifische Parameter und Einstellungen angepasst werden, um verschiedene Szenarien und Strategien zu testen.
 
 ### Anpassung und Erweiterung
 
-Jede Klasse ist so gestaltet, dass sie leicht angepasst und erweitert werden kann, um zusätzliche Funktionen oder Verbesserungen zu integrieren. Beispielsweise können neue Methoden zur genaueren Modellierung des Verhaltens von PV-Anlagen oder Batteriespeichern hinzugefügt werden. Entwickler sind eingeladen, das System nach ihren Bedürfnissen zu modifizieren und zu erweitern.
+Jede Klasse ist so gestaltet, dass sie leicht angepasst und erweitert werden kann, um zusätzliche Funktionen oder Verbesserungen zu integrieren. Beispielsweise können neue Methoden zur genaueren Modellierung des Verhaltens von PV-Anlagen oder Batteriespeichern hinzugefügt werden. Entwickler sind eingeladen, das System after ihren Bedürfnissen zu modifizieren und zu erweitern.
 
 
 # Input für den Flask Server (Stand 30.07.204)
-Beschreibt die Struktur und Datentypen des JSON-Objekts, das an den Flask-Server gesendet wird. Hier mit einem Prognosezeitraum von 48 Stunden!
+Beschreibt die Struktur und Datentypen des JSON-Objekts, das an den Flask-Server gesendet wird. Hier mit einem Prognosezeitraum von 48 hours!
 
 ## Felder des JSON-Objekts
 
-### strompreis_euro_pro_wh
-- **Beschreibung**: Ein Array von Floats, das den Strompreis in Euro pro Wattstunde für verschiedene Zeitintervalle darstellt.
+### electricity_price_euro_per_wh
+- **Beschreibung**: Ein Array von Floats, das den electricity_price in Euro pro Watthour für verschiedene Zeitintervalle darstellt.
 - **Typ**: Array
 - **Element-Typ**: Float
 - **Länge**: 48  
 
-### gesamtlast
-- **Beschreibung**: Ein Array von Floats, das die Gesamtlast (Verbrauch) in Watt für verschiedene Zeitintervalle darstellt.
+### total_load
+- **Beschreibung**: Ein Array von Floats, das die total_load (consumption) in Watt für verschiedene Zeitintervalle darstellt.
 - **Typ**: Array
 - **Element-Typ**: Float
 - **Länge**: 48
 
 ### pv_forecast
-- **Beschreibung**: Ein Array von Floats, das die prognostizierte Photovoltaik-Leistung in Watt für verschiedene Zeitintervalle darstellt.
+- **Beschreibung**: Ein Array von Floats, das die prognostizierte Photovoltaik-power in Watt für verschiedene Zeitintervalle darstellt.
 - **Typ**: Array
 - **Element-Typ**: Float
 - **Länge**: 48
 
-### temperature_forecast
-- **Beschreibung**: Ein Array von Floats, das die Temperaturvorhersage in Grad Celsius für verschiedene Zeitintervalle darstellt.
+### temperaturee_forecast
+- **Beschreibung**: Ein Array von Floats, das die temperaturevorhersage in Grad Celsius für verschiedene Zeitintervalle darstellt.
 - **Typ**: Array
 - **Element-Typ**: Float
 - **Länge**: 48
 
 ### pv_soc
-- **Beschreibung**: Ein Integer, der den Ladezustand des PV Akkus zum START der aktuellen Stunde anzeigt, das ist nicht der aktuelle!!! 
+- **Beschreibung**: Ein Integer, der den charge_level des PV batterys zum START der aktuellen hour anzeigt, das ist nicht der aktuelle!!! 
 - **Typ**: Integer
 
-### pv_akku_cap
-- **Beschreibung**: Ein Integer, der die Kapazität des Photovoltaik-Akkus in Wattstunden darstellt.
+### pv_battery_cap
+- **Beschreibung**: Ein Integer, der die Kapazität des Photovoltaik-batterys in Watthours darstellt.
 - **Typ**: Integer
 
-### einspeiseverguetung_euro_pro_wh
-- **Beschreibung**: Ein Float, der die Einspeisevergütung in Euro pro Wattstunde darstellt.
+### feed_in_tariff_euro_per_wh
+
+- **Beschreibung**: Ein Float, der die Einspeisevergütung in Euro pro Watthour darstellt.
 - **Typ**: Float
 
-### eauto_min_soc
-- **Beschreibung**: Ein Integer, der den minimalen Ladezustand (State of Charge) des Elektroautos in Prozent darstellt.
+### bev_min_soc
+- **Beschreibung**: Ein Integer, der den minimalen charge_level (State of Charge) des Elektroautos in Prozent darstellt.
 - **Typ**: Integer
 
-### eauto_cap
-- **Beschreibung**: Ein Integer, der die Kapazität des Elektroauto-Akkus in Wattstunden darstellt.
+### bev_cap
+- **Beschreibung**: Ein Integer, der die Kapazität des Elektroauto-batterys in Watthours darstellt.
 - **Typ**: Integer
 
-### eauto_charge_efficiency
+### bev_charge_efficiency
 - **Beschreibung**: Ein Float, der die Ladeeffizienz des Elektroautos darstellt.
 - **Typ**: Float
 
-### eauto_charge_power
-- **Beschreibung**: Ein Integer, der die Ladeleistung des Elektroautos in Watt darstellt.
+### bev_charge_power
+- **Beschreibung**: Ein Integer, der die charging_power des Elektroautos in Watt darstellt.
 - **Typ**: Integer
 
-### eauto_soc
-- **Beschreibung**: Ein Integer, der den aktuellen Ladezustand (State of Charge) des Elektroautos in Prozent darstellt.
+### bev_soc
+- **Beschreibung**: Ein Integer, der den aktuellen charge_level (State of Charge) des Elektroautos in Prozent darstellt.
 - **Typ**: Integer
 
 ### start_solution
 - **Beschreibung**: Kann null sein oder eine vorherige Lösung enthalten (wenn vorhanden).
 - **Typ**: null oder object
 
-### haushaltsgeraet_wh
-- **Beschreibung**: Ein Integer, der den Energieverbrauch eines Haushaltsgeräts in Wattstunden darstellt.
+### household_appliance_wh
+- **Beschreibung**: Ein Integer, der den Energieconsumption eines Haushaltsgeräts in Watthours darstellt.
 - **Typ**: Integer
 
-### haushaltsgeraet_dauer
-- **Beschreibung**: Ein Integer, der die Dauer der Nutzung des Haushaltsgeräts in Stunden darstellt.
+### household_appliance_duration
+- **Beschreibung**: Ein Integer, der die duration der Nutzung des Haushaltsgeräts in hours darstellt.
 - **Typ**: Integer
 
 
@@ -206,132 +207,132 @@ Dieses Dokument beschreibt die Struktur und Datentypen des JSON-Outputs, den der
 ## Felder des JSON-Outputs (Stand 30.7.2024)
 
 ### discharge_hours_bin
-- **Beschreibung**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob in einer bestimmten Stunde Energie entladen wird.
+- **Beschreibung**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob in einer bestimmten hour Energie entladen wird.
 - **Typ**: Array
 - **Element-Typ**: Integer (0 oder 1)
 - **Länge**: 48
 
-### eauto_obj
+### bev_obj
 - **Beschreibung**: Ein Objekt, das Informationen über das Elektroauto enthält.
-  - **charge_array**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob das Elektroauto in einer bestimmten Stunde geladen wird.
+  - **charge_array**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob das Elektroauto in einer bestimmten hour geladen wird.
     - **Typ**: Array
     - **Element-Typ**: Integer (0 oder 1)
     - **Länge**: 48
-  - **discharge_array**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob das Elektroauto in einer bestimmten Stunde entladen wird.
+  - **discharge_array**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob das Elektroauto in einer bestimmten hour entladen wird.
     - **Typ**: Array
     - **Element-Typ**: Integer (0 oder 1)
     - **Länge**: 48
-  - **entlade_effizienz**: Die Entladeeffizienz des Elektroautos.
+  - **discharging_efficiency**: Die Entladeeffizienz des Elektroautos.
     - **Typ**: Float
-  - **hours**: Die Anzahl der Stunden, für die die Simulation durchgeführt wird.
+  - **hours**: Die Anzahl der hours, für die die Simulation durchgeführt wird.
     - **Typ**: Integer
-  - **kapazitaet_wh**: Die Kapazität des Elektroauto-Akkus in Wattstunden.
+  - **capacity_wh**: Die Kapazität des Elektroauto-batterys in Watthours.
     - **Typ**: Integer
-  - **lade_effizienz**: Die Ladeeffizienz des Elektroautos.
+  - **charging_efficiency**: Die Ladeeffizienz des Elektroautos.
     - **Typ**: Float
-  - **max_ladeleistung_w**: Die maximale Ladeleistung des Elektroautos in Watt.
+  - **max_charging_power_w**: Die maximale charging_power des Elektroautos in Watt.
     - **Typ**: Integer
-  - **soc_wh**: Der Ladezustand (State of Charge) des Elektroautos in Wattstunden.
+  - **soc_wh**: Der charge_level (State of Charge) des Elektroautos in Watthours.
     - **Typ**: Integer
-  - **start_soc_prozent**: Der initiale Ladezustand (State of Charge) des Elektroautos in Prozent.
+  - **initial_soc_percentage**: Der initiale charge_level (State of Charge) des Elektroautos in Prozent.
     - **Typ**: Integer
 
-### eautocharge_hours_float
-- **Beschreibung**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob das Elektroauto in einer bestimmten Stunde geladen wird.
+### bevcharge_hours_float
+- **Beschreibung**: Ein Array von Binärwerten (0 oder 1), das anzeigt, ob das Elektroauto in einer bestimmten hour geladen wird.
 - **Typ**: Array
 - **Element-Typ**: Integer (0 oder 1)
 - **Länge**: 48
 
 ### result
-- **Beschreibung**: Ein Objekt, das die Ergebnisse der Simulation enthält.
-  - **E-Auto_SoC_pro_Stunde**: Ein Array von Floats, das den Ladezustand des Elektroautos für jede Stunde darstellt.
+- **Beschreibung**: Ein Objekt, das die results der Simulation enthält.
+  - **E-Auto_SoC_per_hour**: Ein Array von Floats, das den charge_level des Elektroautos für jede hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Eigenverbrauch_Wh_pro_Stunde**: Ein Array von Floats, das den Eigenverbrauch in Wattstunden pro Stunde darstellt.
+  - **own_consumption_Wh_per_hour**: Ein Array von Floats, das den own_consumption in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Einnahmen_Euro_pro_Stunde**: Ein Array von Floats, das die Einnahmen in Euro pro Stunde darstellt.
+  - **earnings_euro_per_hour**: Ein Array von Floats, das die Einnahmen in Euro pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Gesamt_Verluste**: Die gesamten Verluste in Wattstunden.
+  - **Gesamt_losses**: Die gesamten losses in Watthours.
     - **Typ**: Float
-  - **Gesamtbilanz_Euro**: Die gesamte Bilanz in Euro.
+  - **overall_balance_Euro**: Die gesamte balance in Euro.
     - **Typ**: Float
   - **Gesamteinnahmen_Euro**: Die gesamten Einnahmen in Euro.
     - **Typ**: Float
   - **Gesamtkosten_Euro**: Die gesamten Kosten in Euro.
     - **Typ**: Float
-  - **Haushaltsgeraet_wh_pro_stunde**: Ein Array von Floats, das den Energieverbrauch eines Haushaltsgeräts in Wattstunden pro Stunde darstellt.
+  - **household_appliance_wh_per_hour**: Ein Array von Floats, das den Energieconsumption eines Haushaltsgeräts in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Kosten_Euro_pro_Stunde**: Ein Array von Floats, das die Kosten in Euro pro Stunde darstellt.
+  - **cost_euro_per_hour**: Ein Array von Floats, das die Kosten in Euro pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Netzbezug_Wh_pro_Stunde**: Ein Array von Floats, das den Netzbezug in Wattstunden pro Stunde darstellt.
+  - **grid_consumption_wh_per_hour**: Ein Array von Floats, das den grid_consumption in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Netzeinspeisung_Wh_pro_Stunde**: Ein Array von Floats, das die Netzeinspeisung in Wattstunden pro Stunde darstellt.
+  - **feed_in_wh_per_hour**: Ein Array von Floats, das die grid_feed_in in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Verluste_Pro_Stunde**: Ein Array von Floats, das die Verluste pro Stunde darstellt.
+  - **losses_per_hour**: Ein Array von Floats, das die losses pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **akku_soc_pro_stunde**: Ein Array von Floats, das den Ladezustand des Akkus in Prozent pro Stunde darstellt.
+  - **battery_soc_per_hour**: Ein Array von Floats, das den charge_level des batterys in Prozent pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
 
 ### simulation_data
 - **Beschreibung**: Ein Objekt, das die simulierten Daten enthält.
-  - **E-Auto_SoC_pro_Stunde**: Ein Array von Floats, das den simulierten Ladezustand des Elektroautos pro Stunde darstellt.
+  - **E-Auto_SoC_per_hour**: Ein Array von Floats, das den simulierten charge_level des Elektroautos pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Eigenverbrauch_Wh_pro_Stunde**: Ein Array von Floats, das den simulierten Eigenverbrauch in Wattstunden pro Stunde darstellt.
+  - **own_consumption_Wh_per_hour**: Ein Array von Floats, das den simulierten own_consumption in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Einnahmen_Euro_pro_Stunde**: Ein Array von Floats, das die simulierten Einnahmen in Euro pro Stunde darstellt.
+  - **earnings_euro_per_hour**: Ein Array von Floats, das die simulierten Einnahmen in Euro pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Gesamt_Verluste**: Die gesamten simulierten Verluste in Wattstunden.
+  - **Gesamt_losses**: Die gesamten simulierten losses in Watthours.
     - **Typ**: Float
-  - **Gesamtbilanz_Euro**: Die gesamte simulierte Bilanz in Euro.
+  - **overall_balance_Euro**: Die gesamte simulierte balance in Euro.
     - **Typ**: Float
   - **Gesamteinnahmen_Euro**: Die gesamten simulierten Einnahmen in Euro.
     - **Typ**: Float
   - **Gesamtkosten_Euro**: Die gesamten simulierten Kosten in Euro.
     - **Typ**: Float
-  - **Haushaltsgeraet_wh_pro_stunde**: Ein Array von Floats, das den simulierten Energieverbrauch eines Haushaltsgeräts in Wattstunden pro Stunde darstellt.
+  - **household_appliance_wh_per_hour**: Ein Array von Floats, das den simulierten Energieconsumption eines Haushaltsgeräts in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Kosten_Euro_pro_Stunde**: Ein Array von Floats, das die simulierten Kosten in Euro pro Stunde darstellt.
+  - **cost_euro_per_hour**: Ein Array von Floats, das die simulierten Kosten in Euro pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Netzbezug_Wh_pro_Stunde**: Ein Array von Floats, das den simulierten Netzbezug in Wattstunden pro Stunde darstellt.
+  - **grid_consumption_wh_per_hour**: Ein Array von Floats, das den simulierten grid_consumption in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Netzeinspeisung_Wh_pro_Stunde**: Ein Array von Floats, das die simulierte Netzeinspeisung in Wattstunden pro Stunde darstellt.
+  - **feed_in_wh_per_hour**: Ein Array von Floats, das die simulierte grid_feed_in in Watthours pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **Verluste_Pro_Stunde**: Ein Array von Floats, das die simulierten Verluste pro Stunde darstellt.
+  - **losses_per_hour**: Ein Array von Floats, das die simulierten losses pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35
-  - **akku_soc_pro_stunde**: Ein Array von Floats, das den simulierten Ladezustand des Akkus in Prozent pro Stunde darstellt.
+  - **battery_soc_per_hour**: Ein Array von Floats, das den simulierten charge_level des batterys in Prozent pro hour darstellt.
     - **Typ**: Array
     - **Element-Typ**: Float
     - **Länge**: 35

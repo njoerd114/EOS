@@ -101,7 +101,7 @@ class BatterySoCPredictorLSTM:
         data.dropna(inplace=True)
         
         # Gauss
-        #data["temperature_mean"] = data[["data","data.1"]].mean(axis=1)
+        #data["temperaturee_mean"] = data[["data","data.1"]].mean(axis=1)
         #data[['battery_voltage', 'battery_current', 'data']]
         data["battery_soc_gauss"] = self.gauss_model.predict(data[['battery_voltage', 'battery_current', 'data']].values)
         # print(data)
@@ -203,9 +203,9 @@ if __name__ == '__main__':
     data = pd.read_csv(data_path, decimal='.')
     data.dropna(inplace=True)  # Entfernen von Zeilen mit NaN-Werten, die durch das Rolling entstehen
     #print(data[["data","data.1"]].mean(axis=1))
-    data["temperature_mean"] = data[["data","data.1"]].mean(axis=1)
+    data["temperaturee_mean"] = data[["data","data.1"]].mean(axis=1)
     # Features und Zielvariable definieren
-    X = data[['battery_voltage', 'battery_current',"temperature_mean"]] # 
+    X = data[['battery_voltage', 'battery_current',"temperaturee_mean"]] # 
     y = data['battery_soc']
 
     # Aufteilen der Daten in Trainings- und Testdatensätze

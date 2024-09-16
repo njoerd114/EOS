@@ -1,74 +1,74 @@
-class Wechselrichter:
-    def __init__(self, max_leistung_wh, akku):
-        self.max_leistung_wh = max_leistung_wh  # Maximale Leistung, die der Wechselrichter verarbeiten kann
-        self.akku = akku  # Verbindung zu einem Akku-Objekt
+class inverter:
+    def __init__(self, max_power_wh, battery):
+        self.max_power_wh = max_power_wh  # Maximale power, die der inverter verarbeiten kann
+        self.battery = battery  # Verbindung zu einem battery-Objekt
 
-    def energie_verarbeiten(self, erzeugung, verbrauch, hour):
-        verluste = 0
-        netzeinspeisung = 0
-        netzbezug = 0.0
-        eigenverbrauch = 0.0
-        #eigenverbrauch = min(erzeugung, verbrauch)  # Direkt verbrauchte Energie
+    def process_energy(self, generation, consumption, hour):
+        losses = 0
+        grid_feed_in = 0
+        grid_consumption = 0.0
+        own_consumption = 0.0
+        #own_consumption = min(generation, consumption)  # Direkt consumptionte Energie
 
-        if erzeugung >= verbrauch:
-            if verbrauch > self.max_leistung_wh:
+        if generation >= consumption:
+            if consumption > self.max_power_wh:
 
-                verluste += erzeugung - self.max_leistung_wh
-                restleistung_nach_verbrauch = self.max_leistung_wh - verbrauch                
-                netzbezug = -restleistung_nach_verbrauch
-                eigenverbrauch = self.max_leistung_wh
+                losses += generation - self.max_power_wh
+                remaining_power_after_consumption = self.max_power_wh - consumption                
+                grid_consumption = -remaining_power_after_consumption
+                own_consumption = self.max_power_wh
                 
             else: 
                 # if hour==10:
-                    # print("PV:",erzeugung)
-                    # print("Load:",verbrauch)
-                    # print("Max Leist:",self.max_leistung_wh)
-                # PV > WR Leistung dann Verlust
+                    # print("PV:",generation)
+                    # print("Load:",consumption)
+                    # print("Max Leist:",self.max_power_wh)
+                # PV > WR power dann Verlust
                 
                 # Load
-                restleistung_nach_verbrauch = erzeugung-verbrauch #min(self.max_leistung_wh - verbrauch, erzeugung-verbrauch)
-                # Akku
-                geladene_energie, verluste_laden_akku = self.akku.energie_laden(restleistung_nach_verbrauch, hour)
-                rest_überschuss = restleistung_nach_verbrauch - (geladene_energie+verluste_laden_akku)
+                remaining_power_after_consumption = generation-consumption #min(self.max_power_wh - consumption, generation-consumption)
+                # battery
+                charged_energy, charging_losses_battery = self.battery.charge_energy(remaining_power_after_consumption, hour)
+                remaining_power_excess = remaining_power_after_consumption - (charged_energy+charging_losses_battery)
                 # if hour == 1:
-                    # print("Erzeugung:",erzeugung)
-                    # print("Last:",verbrauch)
-                    # print("Akku:",geladene_energie)
-                    # print("Akku:",self.akku.ladezustand_in_prozent())
-                    # print("RestÜberschuss"," - ",rest_überschuss)
-                    # print("RestLesitung WR:",self.max_leistung_wh - verbrauch)
-                # Einspeisung, restliche WR Kapazität
+                    # print("generation:",generation)
+                    # print("load:",consumption)
+                    # print("battery:",charged_energy)
+                    # print("battery:",self.battery.charge_level_percentage())
+                    # print("RestÜberschuss"," - ",remaining_power_excess)
+                    # print("RestLesitung WR:",self.max_power_wh - consumption)
+                # feed_in, restliche WR Kapazität
                
-                if rest_überschuss > self.max_leistung_wh - verbrauch:
-                    netzeinspeisung = self.max_leistung_wh - verbrauch
-                    verluste += rest_überschuss - netzeinspeisung
+                if remaining_power_excess > self.max_power_wh - consumption:
+                    grid_feed_in = self.max_power_wh - consumption
+                    losses += remaining_power_excess - grid_feed_in
                 else:
-                    netzeinspeisung = rest_überschuss
+                    grid_feed_in = remaining_power_excess
                 #if hour ==14:
-                #    print("Erz:",erzeugung," Last:",verbrauch, " RestPV:",rest_überschuss," ",restleistung_nach_verbrauch, " Gela:",geladene_energie," Ver:",verluste_laden_akku," Einsp:",netzeinspeisung)
-                verluste += verluste_laden_akku
+                #    print("Erz:",generation," load:",consumption, " RestPV:",remaining_power_excess," ",remaining_power_after_consumption, " Gela:",charged_energy," Ver:",charging_losses_battery," Einsp:",grid_feed_in)
+                losses += charging_losses_battery
 
                 
                 
-                eigenverbrauch = verbrauch
+                own_consumption = consumption
  
         else:
-            benötigte_energie = verbrauch - erzeugung
-            max_akku_leistung = self.akku.max_ladeleistung_w
+            power_needed = consumption - generation
+            max_battery_power = self.battery.max_charging_power_w
             
-            #rest_ac_leistung = max(max_akku_leistung - erzeugung,0)
-            rest_ac_leistung = max(self.max_leistung_wh - erzeugung,0)
+            #rest_ac_power = max(max_battery_power - generation,0)
+            rest_ac_power = max(self.max_power_wh - generation,0)
             
-            if benötigte_energie < rest_ac_leistung:
-                aus_akku, akku_entladeverluste = self.akku.energie_abgeben(benötigte_energie, hour)
+            if power_needed < rest_ac_power:
+                aus_battery, battery_entladelosses = self.battery.energie_abgeben(power_needed, hour)
             else: 
-                aus_akku, akku_entladeverluste = self.akku.energie_abgeben(rest_ac_leistung, hour)
+                aus_battery, battery_entladelosses = self.battery.energie_abgeben(rest_ac_power, hour)
             
             
-            verluste += akku_entladeverluste
+            losses += battery_entladelosses
 
-            netzbezug = benötigte_energie - aus_akku
-            eigenverbrauch = erzeugung + aus_akku
+            grid_consumption = power_needed - aus_battery
+            own_consumption = generation + aus_battery
 
 
-        return netzeinspeisung, netzbezug, verluste, eigenverbrauch
+        return grid_feed_in, grid_consumption, losses, own_consumption

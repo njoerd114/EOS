@@ -52,21 +52,21 @@ class BatteryDataProcessor:
         df = df.sort_values('timestamp')
         groups = []
         group = []
-        last_time = None
+        load_time = None
 
         for _, row in df.iterrows():
-            if last_time is None or (row['timestamp'] - last_time) <= pd.Timedelta(minutes=self.gap):
+            if load_time is None or (row['timestamp'] - load_time) <= pd.Timedelta(minutes=self.gap):
                 group.append(row)
             else:
                 groups.append(group)
                 group = [row]
-            last_time = row['timestamp']
+            load_time = row['timestamp']
 
         if group:
             groups.append(group)
         
-        last_points = [group[-1] for group in groups]
-        return last_points
+        load_points = [group[-1] for group in groups]
+        return load_points
 
     def find_soc_points(self):
         condition_soc_100 = (self.data['battery_voltage'] >= self.voltage_high_threshold) & (self.data['battery_current'].abs() <= self.current_low_threshold)
@@ -75,18 +75,18 @@ class BatteryDataProcessor:
         times_soc_100_all = self.data[condition_soc_100][['timestamp', 'battery_voltage', 'battery_current']]
         times_soc_0_all = self.data[condition_soc_0][['timestamp', 'battery_voltage', 'battery_current']]
 
-        last_points_100 = self.group_points(times_soc_100_all)
-        last_points_0 = self.group_points(times_soc_0_all)
+        load_points_100 = self.group_points(times_soc_100_all)
+        load_points_0 = self.group_points(times_soc_0_all)
 
-        last_points_100_df = pd.DataFrame(last_points_100)
-        last_points_0_df = pd.DataFrame(last_points_0)
+        load_points_100_df = pd.DataFrame(load_points_100)
+        load_points_0_df = pd.DataFrame(load_points_0)
 
-        return last_points_100_df, last_points_0_df
+        return load_points_100_df, load_points_0_df
 
-    def calculate_resetting_soc(self, last_points_100_df, last_points_0_df):
+    def calculate_resetting_soc(self, load_points_100_df, load_points_0_df):
         soc_values = []
         integration_results = []
-        reset_points = pd.concat([last_points_100_df, last_points_0_df]).sort_values('timestamp')
+        reset_points = pd.concat([load_points_100_df, load_points_0_df]).sort_values('timestamp')
 
         # Initialisieren der SoC-Liste
         self.data['calculated_soc'] = np.nan
@@ -98,9 +98,9 @@ class BatteryDataProcessor:
             else:
                 end_point = self.data.iloc[-1]  # Verwenden des letzten Datensatzes als Endpunkt
 
-            if start_point['timestamp'] in last_points_100_df['timestamp'].values:
+            if start_point['timestamp'] in load_points_100_df['timestamp'].values:
                 initial_soc = 100
-            elif start_point['timestamp'] in last_points_0_df['timestamp'].values:
+            elif start_point['timestamp'] in load_points_0_df['timestamp'].values:
                 initial_soc = 0
 
             cut_data = self.data[(self.data['timestamp'] >= start_point['timestamp']) & (self.data['timestamp'] <= end_point['timestamp'])].copy()
@@ -193,13 +193,13 @@ class BatteryDataProcessor:
 
 
 
-    def plot_data(self, last_points_100_df, last_points_0_df, soc_df):
+    def plot_data(self, load_points_100_df, load_points_0_df, soc_df):
         plt.figure(figsize=(14, 10))
 
         plt.subplot(4, 1, 1)
         plt.plot(self.data['timestamp'], self.data['battery_voltage'], label='Battery Voltage', color='blue')
-        plt.scatter(last_points_100_df['timestamp'], last_points_100_df['battery_voltage'], color='green', marker='o', label='100% SoC Points')
-        #plt.scatter(last_points_0_df['timestamp'], last_points_0_df['battery_voltage'], color='red', marker='x', label='0% SoC Points')
+        plt.scatter(load_points_100_df['timestamp'], load_points_100_df['battery_voltage'], color='green', marker='o', label='100% SoC Points')
+        #plt.scatter(load_points_0_df['timestamp'], load_points_0_df['battery_voltage'], color='red', marker='x', label='0% SoC Points')
         plt.xlabel('Timestamp')
         plt.ylabel('Voltage (V)')
         plt.legend()
@@ -207,8 +207,8 @@ class BatteryDataProcessor:
 
         plt.subplot(4, 1, 2)
         plt.plot(self.data['timestamp'], self.data['battery_current'], label='Battery Current', color='orange')
-        plt.scatter(last_points_100_df['timestamp'], last_points_100_df['battery_current'], color='green', marker='o', label='100% SoC Points')
-        #plt.scatter(last_points_0_df['timestamp'], last_points_0_df['battery_current'], color='red', marker='x', label='0% SoC Points')
+        plt.scatter(load_points_100_df['timestamp'], load_points_100_df['battery_current'], color='green', marker='o', label='100% SoC Points')
+        #plt.scatter(load_points_0_df['timestamp'], load_points_0_df['battery_current'], color='red', marker='x', label='0% SoC Points')
         plt.xlabel('Timestamp')
         plt.ylabel('Current (A)')
         plt.legend()
@@ -251,21 +251,21 @@ if __name__ == '__main__':
     bat_capacity = 33 * 1000 / 48 
 
     # Zeitpunkt X definieren
-    zeitpunkt_x = (datetime.now() - timedelta(weeks=100)).strftime('%Y-%m-%d %H:%M:%S')
+    datetime_x = (datetime.now() - timedelta(weeks=100)).strftime('%Y-%m-%d %H:%M:%S')
 
 
     # BatteryDataProcessor instanziieren und verwenden
     processor = BatteryDataProcessor(config, voltage_high_threshold, voltage_low_threshold, current_low_threshold, gap,bat_capacity)
     processor.connect_db()
-    processor.fetch_data(zeitpunkt_x)
+    processor.fetch_data(datetime_x)
     processor.process_data()
-    last_points_100_df, last_points_0_df = processor.find_soc_points()
-    soc_df, integration_results = processor.calculate_resetting_soc(last_points_100_df, last_points_0_df)
+    load_points_100_df, load_points_0_df = processor.find_soc_points()
+    soc_df, integration_results = processor.calculate_resetting_soc(load_points_100_df, load_points_0_df)
     #soh_df = processor.calculate_soh(integration_results)
     processor.update_database_with_soc(soc_df)
 
 
-    processor.plot_data(last_points_100_df, last_points_0_df, soc_df)
+    processor.plot_data(load_points_100_df, load_points_0_df, soc_df)
 
 
 

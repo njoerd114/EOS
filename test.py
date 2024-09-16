@@ -5,11 +5,11 @@ from  modules.class_optimize import *
 # from  modules.class_load import *
 # from  modules.class_ems import *
 # from  modules.class_pv_forecast import *
-# from modules.class_akku import *
-# from modules.class_strompreis import *
+# from modules.class_battery import *
+# from modules.class_electricity_price import *
 # from modules.class_heatpump import * 
 # from modules.class_load_container import * 
-# from modules.class_eauto import * 
+# from modules.class_bev import * 
 from modules.class_optimize import *
 
 from pprint import pprint
@@ -75,7 +75,7 @@ pv_forecast= [
         0,
         0
     ]
-temperature_forecast= [
+temperaturee_forecast= [
         18.3,
         17.8,
         16.9,
@@ -126,7 +126,7 @@ temperature_forecast= [
         17.4
     ]    
 
-strompreis_euro_pro_wh = [
+electricity_price_euro_per_wh = [
        0.00033840228,
         0.00033180228,
         0.00032840228,
@@ -176,7 +176,7 @@ strompreis_euro_pro_wh = [
         0.00029210228,
         0.00027800228
     ]
-gesamtlast= [
+total_load= [
         676.712691350422,
         876.187995931743,
         527.13496018672,
@@ -325,11 +325,12 @@ start_solution= [
         1,
         1
     ]
-parameter= {"preis_euro_pro_wh_akku": 10e-05,'pv_soc': 80, 'pv_akku_cap': 26400, 'year_energy': 4100000, 'einspeiseverguetung_euro_pro_wh': 7e-05, 'max_heizleistung': 1000,"gesamtlast":gesamtlast, 'pv_forecast': pv_forecast, "temperature_forecast":temperature_forecast, "strompreis_euro_pro_wh":strompreis_euro_pro_wh, 'eauto_min_soc': 0, 'eauto_cap': 60000, 'eauto_charge_efficiency': 0.95, 'eauto_charge_power': 11040, 'eauto_soc': 54, 'pvpowernow': 211.137503624, 'start_solution': start_solution, 'haushaltsgeraet_wh': 937, 'haushaltsgeraet_dauer': 0}
+parameter= {"preis_euro_pro_wh_battery": 10e-05,'pv_soc': 80, 'pv_battery_cap': 26400, 'year_energy': 4100000, 'feed_in_tariff_euro_per_wh
+': 7e-05, 'max_heating_power': 1000,"total_load":total_load, 'pv_forecast': pv_forecast, "temperaturee_forecast":temperaturee_forecast, "electricity_price_euro_per_wh":electricity_price_euro_per_wh, 'bev_min_soc': 0, 'bev_cap': 60000, 'bev_charge_efficiency': 0.95, 'bev_charge_power': 11040, 'bev_soc': 54, 'pvpowernow': 211.137503624, 'start_solution': start_solution, 'household_appliance_wh': 937, 'household_appliance_duration': 0}
 
 
 
-opt_class = optimization_problem(prediction_hours=48, strafe=10,optimization_hours=24)
-ergebnis = opt_class.optimierung_ems(parameter=parameter, start_hour=start_hour)
+opt_class = optimization_problem(prediction_hours=48, penalty=10,optimization_hours=24)
+ergebnis = opt_class.optimization_ems(parameter=parameter, start_hour=start_hour)
 #print(ergebnis)
 #print(jsonify(ergebnis))

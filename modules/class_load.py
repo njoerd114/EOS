@@ -15,7 +15,7 @@ class LoadForecast:
 
     def get_daily_stats(self, date_str):
         """
-        Gibt den 24-Stunden-Verlauf mit Erwartungswert und Standardabweichung für ein gegebenes Datum zurück.
+        Gibt den 24-hours-Verlauf mit Erwartungswert und Standardabweichung für ein gegebenes Datum zurück.
         
         :param data: NumPy Array mit Shape (365, 2, 24), repräsentiert Daten für ein Jahr
         :param date_str: Datum als String im Format "YYYY-MM-DD"
@@ -27,18 +27,18 @@ class LoadForecast:
         # Berechnung des Tages des Jahres (1 bis 365)
         day_of_year = date.timetuple().tm_yday
         
-        # Extraktion des 24-Stunden-Verlaufs für das gegebene Datum
+        # Extraktion des 24-hours-Verlaufs für das gegebene Datum
         daily_stats = self.data_year_energy[day_of_year - 1]  # -1, da die Indizierung bei 0 beginnt
         return daily_stats
 
     def get_hourly_stats(self, date_str, hour):
         """
-        Gibt Erwartungswert und Standardabweichung für eine spezifische Stunde eines gegebenen Datums zurück.
+        Gibt Erwartungswert und Standardabweichung für eine spezifische hour eines gegebenen Datums zurück.
         
         :param data: NumPy Array mit Shape (365, 2, 24), repräsentiert Daten für ein Jahr
         :param date_str: Datum als String im Format "YYYY-MM-DD"
-        :param hour: Spezifische Stunde (0 bis 23)
-        :return: Ein Array mit Shape (2,), enthält Erwartungswert und Standardabweichung für die spezifizierte Stunde
+        :param hour: Spezifische hour (0 bis 23)
+        :return: Ein Array mit Shape (2,), enthält Erwartungswert und Standardabweichung für die spezifizierte hour
         """
         # Umwandlung des Datums-Strings in ein datetime-Objekt
         date = datetime.strptime(date_str, "%Y-%m-%d")
@@ -46,8 +46,8 @@ class LoadForecast:
         # Berechnung des Tages des Jahres (1 bis 365)
         day_of_year = date.timetuple().tm_yday
         
-        # Extraktion von Erwartungswert und Standardabweichung für die gegebene Stunde
-        hourly_stats = self.data_year_energy[day_of_year - 1, :, hour]  # Zugriff auf die spezifische Stunde
+        # Extraktion von Erwartungswert und Standardabweichung für die gegebene hour
+        hourly_stats = self.data_year_energy[day_of_year - 1, :, hour]  # Zugriff auf die spezifische hour
         
         return hourly_stats
 
